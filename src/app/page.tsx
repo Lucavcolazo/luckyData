@@ -51,7 +51,7 @@ export default function Home() {
     <div className="flex flex-1 flex-col">
       <header className="flex items-center justify-between border-b border-border px-6 py-5 sm:px-10">
         <div className="flex items-center gap-2">
-          <Ak47Icon className="h-4 w-8 text-muted" />
+          <Ak47Icon className="h-4 w-14 text-muted" />
           <span className="text-sm font-medium tracking-tight">LuckyData</span>
         </div>
         <span className="text-xs text-muted">by Lucky7</span>
@@ -67,19 +67,9 @@ export default function Home() {
               <br />
               Sin ruido.
             </h1>
-            <p className="mx-auto mt-4 max-w-sm text-pretty text-sm text-muted">
-              Pegá tu perfil de Steam y mirá qué hay detrás del número.
-            </p>
           </div>
 
           <ProfileSearchForm onSearch={handleSearch} pending={status === "loading"} />
-
-          <p
-            className="animate-fade-up mt-8 text-center text-xs tracking-wide text-muted"
-            style={{ animationDelay: "140ms" }}
-          >
-            Steam · FACEIT · Leetify
-          </p>
         </div>
       </section>
 
@@ -96,10 +86,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
-      <footer className="border-t border-border px-6 py-5 text-center text-xs text-muted sm:px-10">
-        Datos públicos de Steam. No afiliado a Valve.
-      </footer>
     </div>
   );
 }

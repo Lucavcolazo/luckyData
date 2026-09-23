@@ -62,19 +62,6 @@ function PremierAxisTick({
   );
 }
 
-function linearRegression(points: { x: number; y: number }[]) {
-  const n = points.length;
-  const sumX = points.reduce((a, p) => a + p.x, 0);
-  const sumY = points.reduce((a, p) => a + p.y, 0);
-  const sumXY = points.reduce((a, p) => a + p.x * p.y, 0);
-  const sumXX = points.reduce((a, p) => a + p.x * p.x, 0);
-  const denom = n * sumXX - sumX * sumX;
-  if (denom === 0) return { slope: 0, intercept: sumY / n };
-  const slope = (n * sumXY - sumX * sumY) / denom;
-  const intercept = (sumY - slope * sumX) / n;
-  return { slope, intercept };
-}
-
 function TrendTooltip({
   active,
   payload,
@@ -118,12 +105,9 @@ export function PremierTrend({ recentMatches }: { recentMatches: RecentMatchRank
   const wins = series.filter((m) => m.outcome === "win").length;
   const losses = series.filter((m) => m.outcome === "loss").length;
 
-  const { slope, intercept } = linearRegression(ranks.map((r, i) => ({ x: i, y: r })));
-
   const data = series.map((m, i) => ({
     idx: i,
     rank: m.rank as number,
-    trend: Math.round(slope * i + intercept),
     date: new Date(m.finished_at).toLocaleDateString("es-AR"),
   }));
 
@@ -162,15 +146,6 @@ export function PremierTrend({ recentMatches }: { recentMatches: RecentMatchRank
               <Tooltip content={<TrendTooltip />} cursor={{ stroke: "var(--border)", strokeWidth: 1 }} />
               <Line
                 type="monotone"
-                dataKey="trend"
-                stroke="var(--muted)"
-                strokeWidth={1}
-                strokeDasharray="4 3"
-                dot={false}
-                isAnimationActive={false}
-              />
-              <Line
-                type="monotone"
                 dataKey="rank"
                 stroke={color}
                 strokeWidth={2}
@@ -188,13 +163,13 @@ export function PremierTrend({ recentMatches }: { recentMatches: RecentMatchRank
             <PremierBadge rating={current} color={color} />
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted">Más alto (ventana)</span>
+            <span className="text-xs text-muted">Más alto</span>
             <span className="text-lg font-semibold" style={{ color: premierRankColor(max) }}>
               {max.toLocaleString("es-AR")}
             </span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted">Más bajo (ventana)</span>
+            <span className="text-xs text-muted">Más bajo</span>
             <span className="text-lg font-semibold" style={{ color: premierRankColor(min) }}>
               {min.toLocaleString("es-AR")}
             </span>

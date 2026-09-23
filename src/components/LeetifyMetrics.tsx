@@ -1,6 +1,6 @@
 import type { LeetifyMatch, LeetifyProfile } from "@/lib/leetify";
 import { gaugeColor, type Direction } from "@/lib/gauge";
-import { Histogram } from "@/components/Histogram";
+import { compareToFaceitLevel10, FACEIT_LEVEL_10_BENCHMARK, type BenchmarkComparison } from "@/lib/proBenchmarks";
 
 function Gauge({ value, min, max, direction }: { value: number; min: number; max: number; direction: Direction }) {
   const ratio = Math.min(1, Math.max(0, (value - min) / (max - min)));
@@ -18,13 +18,13 @@ function ChartTile({
   label,
   value,
   gauge,
-  history,
+  benchmark,
   color: forcedColor,
 }: {
   label: string;
   value: string;
   gauge?: { value: number; min: number; max: number; direction: Direction };
-  history?: { values: number[]; markValue: number | null; direction: Direction };
+  benchmark?: BenchmarkComparison | null;
   color?: string;
 }) {
   const color =
@@ -38,16 +38,17 @@ function ChartTile({
       <span className="text-2xl font-semibold tracking-tight" style={{ color }}>
         {value}
       </span>
-      {history && history.values.length >= 3 ? <Histogram {...history} /> : gauge ? <Gauge {...gauge} /> : <div className="h-8" />}
-    </div>
-  );
-}
-
-function PlainTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-1.5 bg-background p-4">
-      <span className="text-xs text-muted">{label}</span>
-      <span className="text-lg font-semibold tracking-tight">{value}</span>
+      {gauge ? <Gauge {...gauge} /> : <div className="h-8" />}
+      {benchmark && (
+        <span className="text-[11px] font-medium" style={{ color: benchmark.color }}>
+          {benchmark.label}
+        </span>
+      )}
+      {benchmark?.unusual && (
+        <span className="text-[11px] font-medium" style={{ color: "var(--warn)" }}>
+          ⚠ Valor atípico frente al resto de los jugadores
+        </span>
+      )}
     </div>
   );
 }
@@ -57,13 +58,15 @@ const fmt = (n: number | null, decimals = 1) => (n === null ? "—" : n.toFixed(
 const average = (values: number[]) =>
   values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
 
-/** Serie (sin orden particular) de una métrica por partida, para el jugador consultado. */
+/** Serie cronológica (más vieja a más nueva) de una métrica por partida, para el jugador consultado. */
 function matchSeries(
   matches: LeetifyMatch[],
   steamid64: string,
   pick: (stats: LeetifyMatch["stats"][number]) => number | null,
 ): number[] {
   return matches
+    .slice()
+    .reverse()
     .map((m) => m.stats.find((s) => s.steam64_id === steamid64))
     .map((s) => (s ? pick(s) : null))
     .filter((v): v is number => v !== null);
@@ -78,18 +81,10 @@ export function LeetifyMetrics({
   matches: LeetifyMatch[];
   steamid64: string;
 }) {
-  const timeToDamageSeries = matchSeries(matches, steamid64, (s) =>
-    s.reaction_time !== null ? s.reaction_time * 1000 : null,
-  );
-  const preaimSeries = matchSeries(matches, steamid64, (s) => s.preaim);
   const kdSeries = matchSeries(matches, steamid64, (s) => s.kd_ratio);
   const adrSeries = matchSeries(matches, steamid64, (s) =>
     s.total_damage !== null && s.rounds_count ? s.total_damage / s.rounds_count : null,
   );
-  const accuracyHeadSeries = matchSeries(matches, steamid64, (s) =>
-    s.accuracy_head !== null ? s.accuracy_head * 100 : null,
-  );
-  const ratingSeries = matchSeries(matches, steamid64, (s) => s.leetify_rating);
 
   return (
     <section className="mt-10">
@@ -111,11 +106,15 @@ export function LeetifyMetrics({
         </p>
       ) : (
         <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-3">
             <ChartTile
               label="Leetify Rating"
               value={fmt(profile.ranks.leetify, 2)}
-              history={{ values: ratingSeries, markValue: profile.ranks.leetify, direction: "higher-better" }}
+              gauge={
+                profile.ranks.leetify !== null
+                  ? { value: profile.ranks.leetify, min: -1, max: 3, direction: "higher-better" }
+                  : undefined
+              }
             />
             <ChartTile
               label="Win Rate"
@@ -152,29 +151,6 @@ export function LeetifyMetrics({
                   ? { value: profile.rating.utility, min: 0, max: 100, direction: "higher-better" }
                   : undefined
               }
-            />
-            <ChartTile
-              label="Time to Damage"
-              value={profile.stats.reaction_time_ms !== null ? `${fmt(profile.stats.reaction_time_ms, 0)}ms` : "—"}
-              history={{
-                values: timeToDamageSeries,
-                markValue: profile.stats.reaction_time_ms,
-                direction: "lower-better",
-              }}
-            />
-            <ChartTile
-              label="Preaim"
-              value={profile.stats.preaim !== null ? `${fmt(profile.stats.preaim)}°` : "—"}
-              history={{ values: preaimSeries, markValue: profile.stats.preaim, direction: "lower-better" }}
-            />
-            <ChartTile
-              label="Accuracy Head"
-              value={profile.stats.accuracy_head !== null ? `${fmt(profile.stats.accuracy_head)}%` : "—"}
-              history={{
-                values: accuracyHeadSeries,
-                markValue: profile.stats.accuracy_head,
-                direction: "higher-better",
-              }}
             />
             <ChartTile
               label="Spray Accuracy"
@@ -226,42 +202,70 @@ export function LeetifyMetrics({
             />
           </div>
 
+          <div className="grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-3">
+            <ChartTile
+              label="Time to Damage"
+              value={profile.stats.reaction_time_ms !== null ? `${fmt(profile.stats.reaction_time_ms, 0)}ms` : "—"}
+              gauge={
+                profile.stats.reaction_time_ms !== null
+                  ? { value: profile.stats.reaction_time_ms, min: 200, max: 900, direction: "lower-better" }
+                  : undefined
+              }
+              benchmark={compareToFaceitLevel10(
+                profile.stats.reaction_time_ms,
+                FACEIT_LEVEL_10_BENCHMARK.timeToDamageMs,
+                "lower-better",
+              )}
+            />
+            <ChartTile
+              label="Preaim"
+              value={profile.stats.preaim !== null ? `${fmt(profile.stats.preaim)}°` : "—"}
+              gauge={
+                profile.stats.preaim !== null
+                  ? { value: profile.stats.preaim, min: 3, max: 20, direction: "lower-better" }
+                  : undefined
+              }
+              benchmark={compareToFaceitLevel10(
+                profile.stats.preaim,
+                FACEIT_LEVEL_10_BENCHMARK.preaimDeg,
+                "lower-better",
+              )}
+            />
+            <ChartTile
+              label="Accuracy Head"
+              value={profile.stats.accuracy_head !== null ? `${fmt(profile.stats.accuracy_head)}%` : "—"}
+              gauge={
+                profile.stats.accuracy_head !== null
+                  ? { value: profile.stats.accuracy_head, min: 0, max: 50, direction: "higher-better" }
+                  : undefined
+              }
+              benchmark={compareToFaceitLevel10(
+                profile.stats.accuracy_head,
+                FACEIT_LEVEL_10_BENCHMARK.accuracyHeadPct,
+                "higher-better",
+              )}
+            />
+          </div>
+
           <div className="grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-2">
             <ChartTile
               label="K/D Ratio (promedio)"
               value={fmt(average(kdSeries), 2)}
-              history={
+              gauge={
                 kdSeries.length
-                  ? { values: kdSeries, markValue: average(kdSeries), direction: "higher-better" }
+                  ? { value: average(kdSeries)!, min: 0, max: 2, direction: "higher-better" }
                   : undefined
               }
             />
             <ChartTile
               label="ADR (promedio)"
               value={fmt(average(adrSeries), 0)}
-              history={
+              gauge={
                 adrSeries.length
-                  ? { values: adrSeries, markValue: average(adrSeries), direction: "higher-better" }
+                  ? { value: average(adrSeries)!, min: 0, max: 120, direction: "higher-better" }
                   : undefined
               }
             />
-          </div>
-
-          <div>
-            <h3 className="mb-2 text-xs text-muted">Otros datos</h3>
-            <div className="grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-4">
-              <PlainTile label="Total Matches" value={profile.total_matches?.toLocaleString("es-AR") ?? "—"} />
-              <PlainTile label="Clutch" value={fmt(profile.rating.clutch)} />
-              <PlainTile label="Opening" value={fmt(profile.rating.opening)} />
-              <PlainTile
-                label="Avg HE Dmg"
-                value={
-                  profile.stats.he_foes_damage_avg !== null
-                    ? `${fmt(profile.stats.he_foes_damage_avg)} / ${fmt(profile.stats.he_friends_damage_avg ?? 0)}`
-                    : "—"
-                }
-              />
-            </div>
           </div>
         </div>
       )}
