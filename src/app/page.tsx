@@ -139,7 +139,7 @@ export default function Home() {
         <section ref={resultsRef} className="min-h-svh px-4 py-10 sm:px-10 lg:px-16">
           {/* Solid panel on purpose: a backdrop-filter on a box this tall renders black on mobile GPUs. */}
           <div className="mx-auto w-full max-w-[1400px] bg-panel/[0.94] px-5 py-8 shadow-[0_30px_80px_rgba(0,0,0,0.55)] sm:px-10 sm:py-12">
-            <div className="mb-10 flex items-center justify-between gap-4">
+            <div className="mb-6 flex items-center justify-between gap-4">
               <button
                 type="button"
                 onClick={newSearch}

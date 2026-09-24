@@ -90,7 +90,7 @@ export function PremierTrend({
 
   if (series.length < 5) {
     return (
-      <section>
+      <section className="mt-16">
         <SectionHeading>Premier</SectionHeading>
         <CurrentRank rating={currentRating ?? series[series.length - 1]?.rank ?? null} />
         <p className="mt-6 text-sm text-ink-muted">
@@ -131,7 +131,7 @@ export function PremierTrend({
   }
 
   return (
-    <section>
+    <section className="mt-16">
       <SectionHeading>Premier</SectionHeading>
 
       <div className="mb-10 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">

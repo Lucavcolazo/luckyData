@@ -2,7 +2,6 @@ import "server-only";
 
 const BASE = "https://open.faceit.com/data/v4";
 const MATCH_LIMIT = 20;
-const HISTORY_LIMIT = 100;
 
 export interface FaceitLifetime {
   matches: number | null;
@@ -70,8 +69,6 @@ export interface FaceitPlayer {
   lifetime: FaceitLifetime | null;
   maps: FaceitMapStats[];
   recentMatches: FaceitMatchStats[];
-  /** Skill level the player had in each recent match, oldest to newest. */
-  levelHistory: { finishedAt: number; level: number }[];
 }
 
 type Auth = Record<string, string>;
@@ -177,22 +174,6 @@ function parseMatches(items: unknown): FaceitMatchStats[] {
   });
 }
 
-function parseLevelHistory(items: unknown, playerId: string): FaceitPlayer["levelHistory"] {
-  if (!Array.isArray(items)) return [];
-  const points: FaceitPlayer["levelHistory"] = [];
-  for (const match of items as Raw[]) {
-    const teams = Object.values((match.teams ?? {}) as Record<string, Raw>);
-    const me = teams
-      .flatMap((t) => (Array.isArray(t.players) ? (t.players as Raw[]) : []))
-      .find((p) => p.player_id === playerId);
-    const level = num(me?.skill_level);
-    const finishedAt = num(match.finished_at);
-    // Level 0 shows up for matches played before the account was ranked.
-    if (level !== null && level >= 1 && finishedAt !== null) points.push({ finishedAt: finishedAt * 1000, level });
-  }
-  return points.sort((a, b) => a.finishedAt - b.finishedAt);
-}
-
 async function fetchPlayerForGame(steamid64: string, game: "cs2" | "csgo", auth: Auth): Promise<FaceitPlayer | null> {
   const url = new URL(`${BASE}/players`);
   url.searchParams.set("game", game);
@@ -210,10 +191,9 @@ async function fetchPlayerForGame(steamid64: string, game: "cs2" | "csgo", auth:
   const region = typeof gameStats.region === "string" ? gameStats.region : null;
 
   // Everything past the profile is optional: a failed call just leaves that block empty.
-  const [stats, matches, history, ranking] = await Promise.all([
+  const [stats, matches, ranking] = await Promise.all([
     getJson(`/players/${playerId}/stats/${game}`, auth),
     getJson(`/players/${playerId}/games/${game}/stats?limit=${MATCH_LIMIT}`, auth),
-    getJson(`/players/${playerId}/history?game=${game}&limit=${HISTORY_LIMIT}`, auth),
     region ? getJson(`/rankings/games/${game}/regions/${region}/players/${playerId}?limit=1`, auth) : null,
   ]);
 
@@ -235,7 +215,6 @@ async function fetchPlayerForGame(steamid64: string, game: "cs2" | "csgo", auth:
     lifetime: stats?.lifetime ? parseLifetime(stats.lifetime as Raw) : null,
     maps: parseMaps(stats?.segments),
     recentMatches: parseMatches(matches?.items),
-    levelHistory: parseLevelHistory(history?.items, playerId),
   };
 }
 

@@ -2,18 +2,16 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { FaceitPlayer } from "@/lib/faceit";
 import { FACEIT_LEVEL_COLORS, FACEIT_LEVEL_RANGES } from "@/lib/rankColors";
 import { FaceitLevelBadge } from "@/components/FaceitLevelBadge";
 import { CountryFlag } from "@/components/CountryFlag";
 import { MapIcon } from "@/components/MapIcon";
+import { MapGrid } from "@/components/MapGrid";
 import { mapDisplayName, ResultMark } from "@/components/LeetifyMatchHistory";
-import { Label, Meter, SandLink, SectionHeading, StatTile } from "@/components/Dossier";
+import { Label, SandLink, SectionHeading, StatGrid, StatTile } from "@/components/Dossier";
 
 const PAGE_SIZE = 10;
-/** A map needs this many matches before it can be called the best or worst one. */
-const MIN_MAP_MATCHES = 5;
 
 const REGION_NAMES: Record<string, string> = {
   SA: "Sudamérica",
@@ -43,211 +41,158 @@ function VerifiedIcon() {
   );
 }
 
+/** One-line FACEIT identity: who, level and ELO, recent form. The detail lives further down. */
 function ProfileHeader({ faceit }: { faceit: FaceitPlayer }) {
   const region = faceit.region ? (REGION_NAMES[faceit.region] ?? faceit.region) : null;
   const since = faceit.memberSince
     ? new Date(faceit.memberSince).toLocaleDateString("es-AR", { month: "short", year: "numeric" })
     : null;
-  const life = faceit.lifetime;
+  const recent = faceit.lifetime?.recentResults ?? [];
 
   return (
-    <section className="animate-fade-up">
-      <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
-        <div className="flex min-w-0 items-center gap-5">
-          {faceit.avatar ? (
-            <Image
-              src={faceit.avatar}
-              alt=""
-              width={96}
-              height={96}
-              className="size-20 shrink-0 object-cover outline outline-1 -outline-offset-1 outline-white/10 sm:size-24"
-              unoptimized
-            />
-          ) : (
-            <span className="size-20 shrink-0 bg-sand/10 sm:size-24" aria-hidden />
-          )}
-          <div className="flex min-w-0 flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <h3 className="font-display text-[clamp(2.25rem,6vw,3.75rem)] leading-[0.85] font-black break-all">
-                {faceit.nickname}
-              </h3>
-              {faceit.verified && <VerifiedIcon />}
-              {faceit.country && <CountryFlag code={faceit.country} showName={false} />}
-              {faceit.premium && (
-                <span className="border border-sand/40 px-2 py-0.5 font-label text-xs font-bold tracking-[0.12em] text-sand uppercase">
-                  Premium
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-ink-muted">
-              {[since && `En FACEIT desde ${since}`, region && `Región ${region}`].filter(Boolean).join(" · ")}
-            </p>
+    <section className="animate-fade-up flex flex-col gap-5 border border-line bg-sand/[0.025] p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex min-w-0 items-center gap-4">
+        {faceit.avatar ? (
+          <Image
+            src={faceit.avatar}
+            alt=""
+            width={56}
+            height={56}
+            className="size-14 shrink-0 object-cover outline outline-1 -outline-offset-1 outline-white/10"
+            unoptimized
+          />
+        ) : (
+          <span className="size-14 shrink-0 bg-sand/10" aria-hidden />
+        )}
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h3 className="font-display text-4xl leading-[0.85] font-black break-all">{faceit.nickname}</h3>
+            {faceit.verified && <VerifiedIcon />}
+            {faceit.country && <CountryFlag code={faceit.country} showName={false} />}
+            {faceit.premium && (
+              <span className="border border-sand/40 px-2 py-0.5 font-label text-xs font-bold tracking-[0.12em] text-sand uppercase">
+                Premium
+              </span>
+            )}
           </div>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-ink-muted">
+            {since && <span>En FACEIT desde {since}</span>}
+            <SandLink href={faceit.faceitUrl}>Ver perfil en FACEIT</SandLink>
+          </p>
         </div>
+      </div>
 
-        <div className="flex items-center gap-4">
-          {faceit.skillLevel !== null && <FaceitLevelBadge level={faceit.skillLevel} size={64} />}
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+        <div className="flex items-center gap-3">
+          {faceit.skillLevel !== null && <FaceitLevelBadge level={faceit.skillLevel} size={52} />}
           <div className="flex flex-col gap-1">
-            <span className="font-label text-6xl leading-[0.8] font-bold tabular-nums">
+            <span className="font-label text-5xl leading-[0.8] font-bold tabular-nums">
               {fmt(faceit.elo)}
-              <span className="ml-1.5 text-2xl text-ink-muted">ELO</span>
+              <span className="ml-1.5 text-xl text-ink-muted">ELO</span>
             </span>
             {faceit.regionRank !== null && (
-              <span className="text-sm text-ink-muted tabular-nums">
+              <span className="text-[13px] text-ink-muted tabular-nums">
                 #{fmt(faceit.regionRank)} en {region ?? "su región"}
               </span>
             )}
           </div>
         </div>
-      </div>
-
-      {life && (
-        <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-6 border-y border-line py-5 md:grid-cols-4">
+        {recent.length > 0 && (
           <div className="flex flex-col gap-2">
-            <Label>Partidas</Label>
-            <span className="font-label text-4xl leading-none font-bold tabular-nums">{fmt(life.matches)}</span>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label>Victorias</Label>
-            <span className="font-label text-4xl leading-none font-bold tabular-nums">
-              {fmt(life.winRate)}
-              <span className="text-xl text-ink-muted">%</span>
-            </span>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label>Racha</Label>
-            <span className="font-label text-4xl leading-none font-bold tabular-nums">
-              {fmt(life.currentStreak)}
-              <span className="ml-1.5 text-base text-ink-muted">mejor: {fmt(life.longestStreak)}</span>
-            </span>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label>Resultados recientes</Label>
-            <span className="flex gap-1.5 pt-1">
-              {life.recentResults.length === 0 && <span className="text-sm text-ink-muted">Sin partidas</span>}
-              {life.recentResults.map((r, i) => (
+            <Label>Recientes</Label>
+            <span className="flex gap-1.5">
+              {recent.map((r, i) => (
                 <ResultMark key={i} outcome={r} score="" />
               ))}
             </span>
           </div>
-        </div>
-      )}
-
-      <div className="mt-4">
-        <SandLink href={faceit.faceitUrl}>Ver perfil en FACEIT</SandLink>
+        )}
       </div>
     </section>
   );
 }
 
+/** Where the ELO sits on FACEIT's 10-level ladder: one track, a segment per level in its own colour. */
 function LevelSection({ faceit }: { faceit: FaceitPlayer }) {
   const level = faceit.skillLevel;
+  const elo = faceit.elo;
   const range = FACEIT_LEVEL_RANGES.find((r) => r.level === level) ?? null;
-  const history = faceit.levelHistory;
-  const visited = [...new Set(history.map((h) => h.level))].sort((a, b) => a - b);
-  const color = level !== null ? (FACEIT_LEVEL_COLORS[level] ?? "var(--sand)") : "var(--sand)";
+  if (!range || elo === null) return null;
 
-  let progress: { ratio: number; text: string } | null = null;
-  if (range && faceit.elo !== null) {
-    progress =
-      range.max === null
-        ? { ratio: 1, text: "Nivel máximo" }
-        : {
-            ratio: clamp01((faceit.elo - range.min) / (range.max + 1 - range.min)),
-            text: `Faltan ${fmt(range.max + 1 - faceit.elo)} ELO para el nivel ${range.level + 1}`,
-          };
-  }
+  const next = FACEIT_LEVEL_RANGES.find((r) => r.level === range.level + 1) ?? null;
+  const progress = range.max === null ? 1 : clamp01((elo - range.min) / (range.max + 1 - range.min));
+  const toNext = next ? next.min - elo : null;
 
   return (
     <section className="animate-fade-up mt-16" style={{ animationDelay: "60ms" }}>
       <SectionHeading>Nivel</SectionHeading>
 
-      <ol className="grid grid-cols-5 gap-2 sm:grid-cols-10">
-        {FACEIT_LEVEL_RANGES.map((r) => {
-          const current = r.level === level;
-          const reached = level !== null && r.level <= level;
-          return (
-            <li
-              key={r.level}
-              className={`flex flex-col items-center gap-2 border px-1 py-3 ${
-                current ? "border-sand/60 bg-sand/[0.06]" : "border-transparent"
-              } ${reached ? "" : "opacity-40"}`}
-              aria-current={current ? "step" : undefined}
-            >
-              <FaceitLevelBadge level={r.level} size={36} />
-              <span className="text-center text-xs text-ink-muted tabular-nums">
-                {r.max === null ? `${fmt(r.min)}+` : `${fmt(r.min)}–${fmt(r.max)}`}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
-
-      {progress && (
-        <div className="mt-6 flex flex-col gap-2 sm:max-w-md">
-          <div className="flex items-baseline justify-between gap-4 text-sm">
-            <span className="tabular-nums">{fmt(faceit.elo)} ELO</span>
-            <span className="text-ink-muted">{progress.text}</span>
-          </div>
-          <Meter ratio={progress.ratio} />
-        </div>
-      )}
-
-      {history.length >= 2 && (
-        <div className="mt-10">
-          <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
-            <Label>Niveles en las últimas {history.length} partidas</Label>
-            <span className="flex items-center gap-2 text-[13px] text-ink-muted">
-              Pasó por
-              {visited.map((l) => (
-                <FaceitLevelBadge key={l} level={l} size={24} />
-              ))}
+      <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+        <div className="flex items-center gap-4">
+          <FaceitLevelBadge level={range.level} size={40} />
+          <div className="flex flex-col gap-1.5">
+            <Label>Nivel {range.level}</Label>
+            <span className="font-label text-3xl leading-[0.8] font-bold tabular-nums">
+              {fmt(elo)}
+              <span className="ml-1 text-base text-ink-muted">ELO</span>
             </span>
           </div>
-          <div className="h-40 w-full tabular-nums">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={history} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
-                <XAxis dataKey="finishedAt" hide />
-                <YAxis
-                  domain={[1, 10]}
-                  ticks={[1, 4, 8, 10]}
-                  orientation="right"
-                  axisLine={false}
-                  tickLine={false}
-                  width={28}
-                  tick={{ fill: "var(--ink-muted)", fontSize: 12 }}
-                />
-                <Tooltip
-                  cursor={{ stroke: "var(--line)" }}
-                  content={({ active, payload }) => {
-                    if (!active || !payload?.length) return null;
-                    const p = payload[0].payload as { finishedAt: number; level: number };
-                    return (
-                      <div className="border border-line bg-panel px-3 py-2 text-[13px] shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
-                        <div className="font-label text-lg leading-tight font-bold">Nivel {p.level}</div>
-                        <div className="text-ink-muted">{new Date(p.finishedAt).toLocaleDateString("es-AR")}</div>
-                      </div>
-                    );
-                  }}
-                />
-                <Line
-                  type="stepAfter"
-                  dataKey="level"
-                  stroke={color}
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4, fill: color, stroke: "var(--panel)", strokeWidth: 2 }}
-                  isAnimationActive={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-2 flex justify-between pr-7 text-xs text-ink-muted tabular-nums">
-            <span>{new Date(history[0].finishedAt).toLocaleDateString("es-AR")}</span>
-            <span>{new Date(history[history.length - 1].finishedAt).toLocaleDateString("es-AR")}</span>
-          </div>
         </div>
-      )}
+        {next && toNext !== null ? (
+          <div className="flex items-center gap-3 text-right">
+            <div className="flex flex-col gap-1.5">
+              <Label>Próximo nivel</Label>
+              <span className="font-label text-3xl leading-[0.8] font-bold tabular-nums">
+                {fmt(toNext)}
+                <span className="ml-1 text-base text-ink-muted">ELO más</span>
+              </span>
+            </div>
+            <FaceitLevelBadge level={next.level} size={40} />
+          </div>
+        ) : (
+          <span className="font-label text-lg font-bold tracking-[0.1em] text-sand uppercase">Nivel máximo</span>
+        )}
+      </div>
+
+      <div className="mt-8">
+        <div className="grid grid-cols-10 gap-1" aria-hidden>
+          {FACEIT_LEVEL_RANGES.map((r) => {
+            const color = FACEIT_LEVEL_COLORS[r.level];
+            const fill = r.level < range.level ? 1 : r.level === range.level ? progress : 0;
+            return (
+              <div key={r.level} className="relative h-2.5">
+                <div className="absolute inset-0 opacity-20" style={{ backgroundColor: color }} />
+                <div className="absolute inset-y-0 left-0" style={{ width: `${fill * 100}%`, backgroundColor: color }} />
+                {r.level === range.level && (
+                  <span
+                    className="absolute -top-1.5 h-5.5 w-1 -translate-x-1/2 bg-foreground shadow-[0_0_0_2px_var(--panel)]"
+                    style={{ left: `${progress * 100}%` }}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <ol className="mt-3 grid grid-cols-10 gap-1">
+          {FACEIT_LEVEL_RANGES.map((r) => {
+            const current = r.level === range.level;
+            return (
+              <li
+                key={r.level}
+                className={`flex flex-col items-center gap-1.5 ${r.level > range.level ? "opacity-40" : ""}`}
+                aria-current={current ? "step" : undefined}
+              >
+                <FaceitLevelBadge level={r.level} size={current ? 32 : 26} />
+                <span
+                  className={`hidden text-center text-xs tabular-nums sm:block ${current ? "text-foreground" : "text-ink-muted"}`}
+                >
+                  {r.max === null ? `${fmt(r.min)}+` : `${fmt(r.min)}–${fmt(r.max)}`}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
     </section>
   );
 }
@@ -255,7 +200,7 @@ function LevelSection({ faceit }: { faceit: FaceitPlayer }) {
 function PerformanceSection({ faceit }: { faceit: FaceitPlayer }) {
   const life = faceit.lifetime;
   return (
-    <section className="animate-fade-up mt-16" style={{ animationDelay: "120ms" }}>
+    <section className="animate-fade-up mt-10" style={{ animationDelay: "120ms" }}>
       <SectionHeading
         aside={
           life?.matches != null ? (
@@ -269,61 +214,63 @@ function PerformanceSection({ faceit }: { faceit: FaceitPlayer }) {
       {!life ? (
         <p className="text-sm text-ink-muted">FACEIT no devolvió estadísticas para esta cuenta.</p>
       ) : (
-        <div className="flex flex-col gap-12">
-          <div className="grid grid-cols-1 gap-x-8 gap-y-8 sm:grid-cols-3">
-            <StatTile featured label="K/D promedio" value={fmt(life.kd, 2)} ratio={ratio(life.kd, 2)} />
-            <StatTile featured label="ADR" value={fmt(life.adr, 1)} ratio={ratio(life.adr, 120)} />
-            <StatTile featured label="Headshots" value={fmt(life.hsPct)} unit="%" ratio={ratio(life.hsPct, 100)} />
-          </div>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-8 lg:grid-cols-4">
-            <StatTile
-              label="Entradas"
-              value={fmt(life.entryRate)}
-              unit="%"
-              ratio={ratio(life.entryRate, 50)}
-              note="Rondas en las que abrió el duelo"
-            />
-            <StatTile
-              label="Entradas ganadas"
-              value={fmt(life.entrySuccess)}
-              unit="%"
-              ratio={ratio(life.entrySuccess, 100)}
-            />
-            <StatTile
-              label="Clutch 1v1"
-              value={fmt(life.clutch1v1Rate)}
-              unit="%"
-              ratio={ratio(life.clutch1v1Rate, 100)}
-              note={life.clutch1v1Count !== null ? `${fmt(life.clutch1v1Wins)} de ${fmt(life.clutch1v1Count)}` : undefined}
-            />
-            <StatTile
-              label="Clutch 1v2"
-              value={fmt(life.clutch1v2Rate)}
-              unit="%"
-              ratio={ratio(life.clutch1v2Rate, 100)}
-              note={life.clutch1v2Count !== null ? `${fmt(life.clutch1v2Wins)} de ${fmt(life.clutch1v2Count)}` : undefined}
-            />
-            <StatTile
-              label="Daño de utilidad"
-              value={fmt(life.utilityDamagePerRound, 1)}
-              ratio={ratio(life.utilityDamagePerRound, 20)}
-              note="Por ronda"
-            />
-            <StatTile label="Flashes efectivas" value={fmt(life.flashSuccess)} unit="%" ratio={ratio(life.flashSuccess, 100)} />
-            <StatTile
-              label="Utilidad efectiva"
-              value={fmt(life.utilitySuccess)}
-              unit="%"
-              ratio={ratio(life.utilitySuccess, 100)}
-            />
-            <StatTile
-              label="Kills con AWP"
-              value={fmt(life.sniperKillsPerRound, 2)}
-              ratio={ratio(life.sniperKillsPerRound, 0.3)}
-              note="Por ronda"
-            />
-          </div>
-        </div>
+        <StatGrid>
+          <StatTile label="K/D promedio" value={fmt(life.kd, 2)} ratio={ratio(life.kd, 2)} />
+          <StatTile label="ADR" value={fmt(life.adr, 1)} ratio={ratio(life.adr, 120)} />
+          <StatTile label="Headshots" value={fmt(life.hsPct)} unit="%" ratio={ratio(life.hsPct, 100)} />
+          <StatTile label="Victorias" value={fmt(life.winRate)} unit="%" ratio={ratio(life.winRate, 100)} />
+          <StatTile
+            label="Entradas"
+            value={fmt(life.entryRate)}
+            unit="%"
+            ratio={ratio(life.entryRate, 50)}
+            note="Rondas en las que abrió el duelo"
+          />
+          <StatTile
+            label="Entradas ganadas"
+            value={fmt(life.entrySuccess)}
+            unit="%"
+            ratio={ratio(life.entrySuccess, 100)}
+          />
+          <StatTile
+            label="Clutch 1v1"
+            value={fmt(life.clutch1v1Rate)}
+            unit="%"
+            ratio={ratio(life.clutch1v1Rate, 100)}
+            note={life.clutch1v1Count !== null ? `${fmt(life.clutch1v1Wins)} de ${fmt(life.clutch1v1Count)}` : undefined}
+          />
+          <StatTile
+            label="Clutch 1v2"
+            value={fmt(life.clutch1v2Rate)}
+            unit="%"
+            ratio={ratio(life.clutch1v2Rate, 100)}
+            note={life.clutch1v2Count !== null ? `${fmt(life.clutch1v2Wins)} de ${fmt(life.clutch1v2Count)}` : undefined}
+          />
+          <StatTile
+            label="Daño de utilidad"
+            value={fmt(life.utilityDamagePerRound, 1)}
+            ratio={ratio(life.utilityDamagePerRound, 20)}
+            note="Por ronda"
+          />
+          <StatTile label="Flashes efectivas" value={fmt(life.flashSuccess)} unit="%" ratio={ratio(life.flashSuccess, 100)} />
+          <StatTile
+            label="Utilidad efectiva"
+            value={fmt(life.utilitySuccess)}
+            unit="%"
+            ratio={ratio(life.utilitySuccess, 100)}
+          />
+          <StatTile
+            label="Kills con AWP"
+            value={fmt(life.sniperKillsPerRound, 2)}
+            ratio={ratio(life.sniperKillsPerRound, 0.3)}
+            note="Por ronda"
+          />
+          <StatTile
+            label="Racha actual"
+            value={fmt(life.currentStreak)}
+            note={life.longestStreak !== null ? `Mejor racha: ${fmt(life.longestStreak)}` : undefined}
+          />
+        </StatGrid>
       )}
     </section>
   );
@@ -331,41 +278,12 @@ function PerformanceSection({ faceit }: { faceit: FaceitPlayer }) {
 
 function MapsSection({ faceit }: { faceit: FaceitPlayer }) {
   if (faceit.maps.length === 0) return null;
-  const ranked = faceit.maps.filter((m) => m.matches >= MIN_MAP_MATCHES && m.winRate !== null);
-  const best = ranked.length > 1 ? ranked.reduce((a, b) => (b.winRate! > a.winRate! ? b : a)) : null;
-  const worst = ranked.length > 1 ? ranked.reduce((a, b) => (b.winRate! < a.winRate! ? b : a)) : null;
-
   return (
     <section className="animate-fade-up mt-16" style={{ animationDelay: "180ms" }}>
       <SectionHeading aside={<span className="text-[13px] text-ink-muted">Ordenados por partidas jugadas</span>}>
         Mapas
       </SectionHeading>
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {faceit.maps.map((m) => (
-          <li key={m.name} className="relative isolate flex h-40 flex-col justify-end overflow-hidden p-4">
-            {m.image && (
-              <Image src={m.image} alt="" fill sizes="(min-width: 1024px) 25vw, 50vw" className="-z-20 object-cover" unoptimized />
-            )}
-            <div className="absolute inset-0 -z-10 bg-gradient-to-t from-panel via-panel/80 to-panel/30" aria-hidden />
-            {(m === best || m === worst) && (
-              <span
-                className={`absolute top-3 left-3 px-2 py-0.5 font-label text-xs font-bold tracking-[0.12em] uppercase ${
-                  m === best ? "bg-good text-panel" : "bg-paint text-white"
-                }`}
-              >
-                {m === best ? "Mejor mapa" : "Peor mapa"}
-              </span>
-            )}
-            <span className="font-display text-3xl leading-none font-black text-foreground uppercase">{m.name}</span>
-            <span className="mt-2 flex flex-wrap gap-x-3 text-[13px] text-sand tabular-nums">
-              <span>{fmt(m.matches)} partidas</span>
-              <span>{fmt(m.winRate)}% victorias</span>
-              <span>K/D {fmt(m.kd, 2)}</span>
-              <span>ADR {fmt(m.adr)}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
+      <MapGrid maps={faceit.maps} />
     </section>
   );
 }
@@ -482,8 +400,9 @@ export function FaceitSection({ faceit }: { faceit: FaceitPlayer | null }) {
   return (
     <div className="flex flex-col">
       <ProfileHeader faceit={faceit} />
-      <LevelSection faceit={faceit} />
+      {/* Performance right under the header, the rank detail after it. */}
       <PerformanceSection faceit={faceit} />
+      <LevelSection faceit={faceit} />
       <MapsSection faceit={faceit} />
       <MatchesSection faceit={faceit} />
     </div>

@@ -1,10 +1,10 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Image from "next/image";
 import type { PlayerData } from "@/lib/playerData";
 import {
-  COMPARE_SECTIONS,
+  COMPARE_SOURCES,
   relativeRatios,
   winnerOf,
   type CompareMetric,
@@ -14,6 +14,7 @@ import { CountryFlag } from "@/components/CountryFlag";
 import { FaceitLevelBadge } from "@/components/FaceitLevelBadge";
 import { PremierBadge } from "@/components/PremierBadge";
 import { SandLink, SectionHeading } from "@/components/Dossier";
+import { StatsSwitch, type StatsSource } from "@/components/StatsSwitch";
 
 type Side = "a" | "b";
 
@@ -164,13 +165,16 @@ export function ComparisonView({
   b: PlayerData;
   onOpenProfile: (player: PlayerData) => void;
 }) {
+  const [source, setSource] = useState<StatsSource>("cs2");
+  const sections = COMPARE_SOURCES[source];
   const tally = { a: 0, b: 0, tie: 0 };
-  for (const section of COMPARE_SECTIONS) {
+  for (const section of sections) {
     for (const metric of section.metrics) {
       const w = winnerOf(metric, metric.get(a), metric.get(b));
       if (w) tally[w]++;
     }
   }
+  const missingFaceit = [a, b].filter((p) => !p.faceit);
   const leader = tally.a === tally.b ? null : tally.a > tally.b ? a : b;
 
   return (
@@ -181,46 +185,63 @@ export function ComparisonView({
         <PlayerHeader player={b} side="b" onOpen={() => onOpenProfile(b)} />
       </section>
 
-      <section
-        className="animate-fade-up mt-12 flex flex-col items-center gap-3 border-y border-line py-8 text-center"
-        style={{ animationDelay: "60ms" }}
-      >
-        <span className="font-label text-sm font-semibold tracking-[0.1em] text-ink-muted uppercase">Marcador</span>
-        <div className="flex items-baseline gap-5 font-label leading-none font-bold tabular-nums">
-          <span className="text-7xl text-sand sm:text-8xl">{tally.a}</span>
-          <span className="text-3xl text-ink-muted">–</span>
-          <span className="text-7xl text-rival sm:text-8xl">{tally.b}</span>
-        </div>
-        <p className="text-sm text-ink-muted">
-          {leader ? (
-            <>
-              <span className="text-foreground">{leader.summary.personaname}</span> gana en más aspectos
-            </>
-          ) : (
-            "Parejos"
-          )}
-          {tally.tie > 0 && ` · ${tally.tie} ${tally.tie === 1 ? "empate" : "empates"}`}
-        </p>
-      </section>
+      <div className="animate-fade-up mt-12 flex justify-center" style={{ animationDelay: "60ms" }}>
+        <StatsSwitch value={source} onChange={setSource} idPrefix="compare" />
+      </div>
 
-      {COMPARE_SECTIONS.map((section, i) => (
-        <section key={section.title} className="animate-fade-up mt-16" style={{ animationDelay: `${120 + i * 60}ms` }}>
-          <SectionHeading
-            aside={
-              section.title === "Rendimiento" ? (
-                <SandLink href="https://leetify.com/">Data Provided by Leetify</SandLink>
-              ) : undefined
-            }
-          >
-            {section.title}
-          </SectionHeading>
-          <div className="border-t border-line">
-            {section.metrics.map((metric) => (
-              <MetricRow key={metric.key} metric={metric} a={a} b={b} />
-            ))}
+      <div
+        role="tabpanel"
+        id="compare-panel"
+        aria-labelledby={`compare-tab-${source}`}
+        key={source}
+        className="animate-fade-up flex flex-col"
+      >
+        {source === "faceit" && missingFaceit.length > 0 && (
+          <p className="mt-8 text-center text-sm text-ink-muted">
+            {missingFaceit.map((p) => p.summary.personaname).join(" y ")}{" "}
+            {missingFaceit.length === 1 ? "no tiene" : "no tienen"} cuenta de FACEIT vinculada: esas filas quedan sin datos y
+            no suman al marcador.
+          </p>
+        )}
+
+        <section className="mt-8 flex flex-col items-center gap-3 border-y border-line py-8 text-center">
+          <span className="font-label text-sm font-semibold tracking-[0.1em] text-ink-muted uppercase">Marcador</span>
+          <div className="flex items-baseline gap-5 font-label leading-none font-bold tabular-nums">
+            <span className="text-7xl text-sand sm:text-8xl">{tally.a}</span>
+            <span className="text-3xl text-ink-muted">–</span>
+            <span className="text-7xl text-rival sm:text-8xl">{tally.b}</span>
           </div>
+          <p className="text-sm text-ink-muted">
+            {leader ? (
+              <>
+                <span className="text-foreground">{leader.summary.personaname}</span> gana en más aspectos
+              </>
+            ) : (
+              "Parejos"
+            )}
+            {tally.tie > 0 && ` · ${tally.tie} ${tally.tie === 1 ? "empate" : "empates"}`}
+          </p>
         </section>
-      ))}
+
+        {sections.map((section, i) => (
+          <section key={section.title} className="animate-fade-up mt-16" style={{ animationDelay: `${120 + i * 60}ms` }}>
+            <SectionHeading
+              aside={
+                source === "cs2" && section.title === "Rendimiento" ? (
+                  <SandLink href="https://leetify.com/">Data Provided by Leetify</SandLink>
+                ) : undefined
+              }
+            >
+              {section.title}
+            </SectionHeading>
+            <div className="border-t border-line">
+              {section.metrics.map((metric) => (
+                <MetricRow key={metric.key} metric={metric} a={a} b={b} />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }

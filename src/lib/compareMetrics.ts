@@ -1,5 +1,6 @@
 import type { Direction } from "@/lib/gauge";
 import type { PlayerData } from "@/lib/playerData";
+import type { StatsSource } from "@/components/StatsSwitch";
 
 const PREMIER_RANK_TYPE = 11;
 
@@ -38,12 +39,11 @@ function premierWinRate(p: PlayerData): number | null {
   return (decided.filter((m) => m.outcome === "win").length / decided.length) * 100;
 }
 
-export const COMPARE_SECTIONS: CompareSection[] = [
+const CS2_SECTIONS: CompareSection[] = [
   {
-    title: "Rangos",
+    title: "Rango",
     metrics: [
       { key: "premier", label: "Premier", direction: "higher-better", get: (p) => p.leetify?.ranks.premier ?? null, format: num(0) },
-      { key: "faceit", label: "FACEIT ELO", direction: "higher-better", get: (p) => p.faceit?.elo ?? null, format: num(0) },
     ],
   },
   {
@@ -121,6 +121,70 @@ export const COMPARE_SECTIONS: CompareSection[] = [
     ],
   },
 ];
+
+const life = (p: PlayerData) => p.faceit?.lifetime ?? null;
+
+const FACEIT_SECTIONS: CompareSection[] = [
+  {
+    title: "Rango",
+    metrics: [
+      { key: "faceit", label: "FACEIT ELO", direction: "higher-better", get: (p) => p.faceit?.elo ?? null, format: num(0) },
+    ],
+  },
+  {
+    title: "Rendimiento",
+    metrics: [
+      { key: "fWinrate", label: "Victorias", direction: "higher-better", get: (p) => life(p)?.winRate ?? null, format: pct(0) },
+      { key: "fKd", label: "K/D promedio", direction: "higher-better", get: (p) => life(p)?.kd ?? null, format: num(2) },
+      { key: "fAdr", label: "ADR", direction: "higher-better", get: (p) => life(p)?.adr ?? null, format: num(1) },
+      { key: "fHs", label: "Headshots", direction: "higher-better", get: (p) => life(p)?.hsPct ?? null, format: pct(0) },
+      {
+        key: "fEntry",
+        label: "Entradas ganadas",
+        direction: "higher-better",
+        get: (p) => life(p)?.entrySuccess ?? null,
+        format: pct(0),
+      },
+      { key: "f1v1", label: "Clutch 1v1", direction: "higher-better", get: (p) => life(p)?.clutch1v1Rate ?? null, format: pct(0) },
+      { key: "f1v2", label: "Clutch 1v2", direction: "higher-better", get: (p) => life(p)?.clutch1v2Rate ?? null, format: pct(0) },
+      {
+        key: "fUtilDmg",
+        label: "Daño de utilidad",
+        direction: "higher-better",
+        get: (p) => life(p)?.utilityDamagePerRound ?? null,
+        format: num(1),
+        note: "Por ronda",
+      },
+      {
+        key: "fFlash",
+        label: "Flashes efectivas",
+        direction: "higher-better",
+        get: (p) => life(p)?.flashSuccess ?? null,
+        format: pct(0),
+      },
+      {
+        key: "fUtil",
+        label: "Utilidad efectiva",
+        direction: "higher-better",
+        get: (p) => life(p)?.utilitySuccess ?? null,
+        format: pct(0),
+      },
+      {
+        key: "fStreak",
+        label: "Mejor racha",
+        direction: "higher-better",
+        get: (p) => life(p)?.longestStreak ?? null,
+        format: num(0),
+        note: "Victorias seguidas",
+      },
+    ],
+  },
+];
+
+export const COMPARE_SOURCES: Record<StatsSource, CompareSection[]> = {
+  cs2: CS2_SECTIONS,
+  faceit: FACEIT_SECTIONS,
+};
 
 export type Winner = "a" | "b" | "tie" | null;
 
