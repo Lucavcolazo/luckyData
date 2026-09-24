@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     }
   } catch {
     return NextResponse.json(
-      { error: "No pudimos conectar con la API de Steam. Probá de nuevo en un momento." },
+      { error: "" },
       { status: 502 },
     );
   }
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     ]);
   } catch {
     return NextResponse.json(
-      { error: "No pudimos conectar con la API de Steam. Probá de nuevo en un momento." },
+      { error: "Probá de nuevo en un momento." },
       { status: 502 },
     );
   }

@@ -1,59 +1,65 @@
 import type { LeetifyMatch, LeetifyProfile } from "@/lib/leetify";
-import { gaugeColor, type Direction } from "@/lib/gauge";
-import { compareToFaceitLevel10, FACEIT_LEVEL_10_BENCHMARK, type BenchmarkComparison } from "@/lib/proBenchmarks";
+import { gaugeRatio, type Direction } from "@/lib/gauge";
+import { compareToFaceitLevel10, FACEIT_LEVEL_10_BENCHMARK } from "@/lib/proBenchmarks";
+import { Label, Meter, SandLink, SectionHeading } from "@/components/Dossier";
 
-function Gauge({ value, min, max, direction }: { value: number; min: number; max: number; direction: Direction }) {
-  const ratio = Math.min(1, Math.max(0, (value - min) / (max - min)));
-  const color = gaugeColor(ratio, direction);
-  return (
-    <div className="flex h-8 w-full items-end">
-      <div className="h-1 w-full bg-border">
-        <div className="h-full" style={{ width: `${ratio * 100}%`, backgroundColor: color }} />
-      </div>
-    </div>
-  );
-}
+type GaugeSpec = { value: number; min: number; max: number; direction: Direction };
 
-function ChartTile({
+function Tile({
   label,
   value,
+  unit,
   gauge,
   benchmark,
-  color: forcedColor,
+  note,
+  featured = false,
 }: {
   label: string;
   value: string;
-  gauge?: { value: number; min: number; max: number; direction: Direction };
-  benchmark?: BenchmarkComparison | null;
-  color?: string;
+  unit?: string;
+  gauge?: GaugeSpec;
+  /** Reference value drawn as a tick on the meter, in the gauge's units. */
+  benchmark?: { value: number; direction: Direction } | null;
+  note?: React.ReactNode;
+  featured?: boolean;
 }) {
-  const color =
-    forcedColor ??
-    (gauge
-      ? gaugeColor(Math.min(1, Math.max(0, (gauge.value - gauge.min) / (gauge.max - gauge.min))), gauge.direction)
-      : undefined);
+  const comparison =
+    gauge && benchmark ? compareToFaceitLevel10(gauge.value, benchmark.value, benchmark.direction) : null;
+
   return (
-    <div className="flex flex-col gap-2 bg-background p-5">
-      <span className="text-xs text-muted">{label}</span>
-      <span className="text-2xl font-semibold tracking-tight" style={{ color }}>
+    <div className="flex flex-col gap-3 border-t border-line pt-4">
+      <Label>{label}</Label>
+      <span
+        className={`font-label leading-none font-bold tabular-nums ${featured ? "text-6xl sm:text-7xl" : "text-4xl"}`}
+      >
         {value}
+        {unit && value !== "—" && <span className="ml-0.5 text-[0.5em] text-ink-muted">{unit}</span>}
       </span>
-      {gauge ? <Gauge {...gauge} /> : <div className="h-8" />}
-      {benchmark && (
-        <span className="text-[11px] font-medium" style={{ color: benchmark.color }}>
-          {benchmark.label}
+      {gauge && (
+        <Meter
+          ratio={gaugeRatio(gauge.value, gauge.min, gauge.max, gauge.direction)}
+          mark={benchmark ? gaugeRatio(benchmark.value, gauge.min, gauge.max, gauge.direction) : undefined}
+        />
+      )}
+      {comparison && (
+        <span className="text-[13px]" style={{ color: comparison.color }}>
+          {comparison.label}
         </span>
       )}
-      {benchmark?.unusual && (
-        <span className="text-[11px] font-medium" style={{ color: "var(--warn)" }}>
-          ⚠ Valor atípico frente al resto de los jugadores
-        </span>
+      {comparison?.unusual && (
+        <span className="text-[13px] text-paint">Valor atípico frente al resto de los jugadores</span>
       )}
+      {note && <span className="text-xs text-ink-muted">{note}</span>}
     </div>
   );
 }
 
-const fmt = (n: number | null, decimals = 1) => (n === null ? "—" : n.toFixed(decimals));
+const fmt = (n: number | null, decimals = 1) =>
+  n === null
+    ? "—"
+    : n.toLocaleString("es-AR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+
+const signed = (n: number | null, decimals = 2) => (n === null ? "—" : `${n > 0 ? "+" : ""}${fmt(n, decimals)}`);
 
 const average = (values: number[]) =>
   values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
@@ -72,6 +78,9 @@ function matchSeries(
     .filter((v): v is number => v !== null);
 }
 
+const gauge = (value: number | null, min: number, max: number, direction: Direction = "higher-better") =>
+  value !== null ? { value, min, max, direction } : undefined;
+
 export function LeetifyMetrics({
   profile,
   matches,
@@ -85,186 +94,122 @@ export function LeetifyMetrics({
   const adrSeries = matchSeries(matches, steamid64, (s) =>
     s.total_damage !== null && s.rounds_count ? s.total_damage / s.rounds_count : null,
   );
+  const kd = average(kdSeries);
+  const adr = average(adrSeries);
 
   return (
-    <section className="mt-10">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-muted">Rendimiento</h2>
-        <a
-          href="https://leetify.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs font-bold text-[#F84982] underline"
-        >
-          Data Provided by Leetify
-        </a>
-      </div>
+    <section className="mt-16">
+      <SectionHeading aside={<SandLink href="https://leetify.com/">Data Provided by Leetify</SandLink>}>
+        Rendimiento
+      </SectionHeading>
 
       {!profile ? (
-        <p className="text-sm text-muted">
-          Sin datos públicos de Leetify para este perfil todavía.
-        </p>
+        <p className="text-sm text-ink-muted">Sin datos públicos de Leetify para este perfil todavía.</p>
       ) : (
-        <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-3">
-            <ChartTile
+        <div className="flex flex-col gap-12">
+          <div className="grid grid-cols-1 gap-x-8 gap-y-8 sm:grid-cols-3">
+            <Tile
+              featured
               label="Leetify Rating"
-              value={fmt(profile.ranks.leetify, 2)}
-              gauge={
-                profile.ranks.leetify !== null
-                  ? { value: profile.ranks.leetify, min: -1, max: 3, direction: "higher-better" }
+              value={signed(profile.ranks.leetify)}
+              gauge={gauge(profile.ranks.leetify, -1, 3)}
+            />
+            <Tile
+              featured
+              label="Victorias"
+              value={profile.winrate !== null ? fmt(profile.winrate * 100) : "—"}
+              unit="%"
+              gauge={gauge(profile.winrate !== null ? profile.winrate * 100 : null, 30, 70)}
+              note={
+                profile.total_matches !== null
+                  ? `${profile.total_matches.toLocaleString("es-AR")} partidas en Leetify`
                   : undefined
               }
             />
-            <ChartTile
-              label="Win Rate"
-              value={profile.winrate !== null ? `${(profile.winrate * 100).toFixed(1)}%` : "—"}
-              gauge={
-                profile.winrate !== null
-                  ? { value: profile.winrate * 100, min: 30, max: 70, direction: "higher-better" }
-                  : undefined
-              }
-            />
-            <ChartTile
-              label="Aim"
-              value={fmt(profile.rating.aim)}
-              gauge={
-                profile.rating.aim !== null
-                  ? { value: profile.rating.aim, min: 0, max: 100, direction: "higher-better" }
-                  : undefined
-              }
-            />
-            <ChartTile
-              label="Positioning"
+            <Tile featured label="Puntería" value={fmt(profile.rating.aim)} gauge={gauge(profile.rating.aim, 0, 100)} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-x-8 gap-y-8 lg:grid-cols-3">
+            <Tile
+              label="Posicionamiento"
               value={fmt(profile.rating.positioning)}
-              gauge={
-                profile.rating.positioning !== null
-                  ? { value: profile.rating.positioning, min: 0, max: 100, direction: "higher-better" }
-                  : undefined
-              }
+              gauge={gauge(profile.rating.positioning, 0, 100)}
             />
-            <ChartTile
-              label="Utility"
-              value={fmt(profile.rating.utility)}
-              gauge={
-                profile.rating.utility !== null
-                  ? { value: profile.rating.utility, min: 0, max: 100, direction: "higher-better" }
-                  : undefined
-              }
+            <Tile label="Utilidad" value={fmt(profile.rating.utility)} gauge={gauge(profile.rating.utility, 0, 100)} />
+            <Tile
+              label="Precisión de spray"
+              value={fmt(profile.stats.spray_accuracy)}
+              unit="%"
+              gauge={gauge(profile.stats.spray_accuracy, 0, 60)}
             />
-            <ChartTile
-              label="Spray Accuracy"
-              value={profile.stats.spray_accuracy !== null ? `${fmt(profile.stats.spray_accuracy)}%` : "—"}
-              gauge={
-                profile.stats.spray_accuracy !== null
-                  ? { value: profile.stats.spray_accuracy, min: 0, max: 60, direction: "higher-better" }
-                  : undefined
-              }
+            <Tile
+              label="Counter-strafe"
+              value={fmt(profile.stats.counter_strafing_good_shots_ratio)}
+              unit="%"
+              gauge={gauge(profile.stats.counter_strafing_good_shots_ratio, 0, 100)}
             />
-            <ChartTile
-              label="Counter-Strafing"
-              value={
-                profile.stats.counter_strafing_good_shots_ratio !== null
-                  ? `${fmt(profile.stats.counter_strafing_good_shots_ratio)}%`
-                  : "—"
-              }
-              gauge={
-                profile.stats.counter_strafing_good_shots_ratio !== null
-                  ? { value: profile.stats.counter_strafing_good_shots_ratio, min: 0, max: 100, direction: "higher-better" }
-                  : undefined
-              }
+            <Tile
+              label="Trades logrados"
+              value={fmt(profile.stats.trade_kills_success_percentage)}
+              unit="%"
+              gauge={gauge(profile.stats.trade_kills_success_percentage, 0, 100)}
             />
-            <ChartTile
-              label="Trade Kills Success"
-              value={
-                profile.stats.trade_kills_success_percentage !== null
-                  ? `${fmt(profile.stats.trade_kills_success_percentage)}%`
-                  : "—"
-              }
-              gauge={
-                profile.stats.trade_kills_success_percentage !== null
-                  ? { value: profile.stats.trade_kills_success_percentage, min: 0, max: 100, direction: "higher-better" }
-                  : undefined
-              }
-            />
-            <ChartTile
-              label="Traded Deaths Success"
-              value={
-                profile.stats.traded_deaths_success_percentage !== null
-                  ? `${fmt(profile.stats.traded_deaths_success_percentage)}%`
-                  : "—"
-              }
-              gauge={
-                profile.stats.traded_deaths_success_percentage !== null
-                  ? { value: profile.stats.traded_deaths_success_percentage, min: 0, max: 100, direction: "higher-better" }
-                  : undefined
-              }
+            <Tile
+              label="Muertes tradeadas"
+              value={fmt(profile.stats.traded_deaths_success_percentage)}
+              unit="%"
+              gauge={gauge(profile.stats.traded_deaths_success_percentage, 0, 100)}
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-3">
-            <ChartTile
-              label="Time to Damage"
-              value={profile.stats.reaction_time_ms !== null ? `${fmt(profile.stats.reaction_time_ms, 0)}ms` : "—"}
-              gauge={
-                profile.stats.reaction_time_ms !== null
-                  ? { value: profile.stats.reaction_time_ms, min: 200, max: 900, direction: "lower-better" }
-                  : undefined
-              }
-              benchmark={compareToFaceitLevel10(
-                profile.stats.reaction_time_ms,
-                FACEIT_LEVEL_10_BENCHMARK.timeToDamageMs,
-                "lower-better",
-              )}
-            />
-            <ChartTile
-              label="Preaim"
-              value={profile.stats.preaim !== null ? `${fmt(profile.stats.preaim)}°` : "—"}
-              gauge={
-                profile.stats.preaim !== null
-                  ? { value: profile.stats.preaim, min: 3, max: 20, direction: "lower-better" }
-                  : undefined
-              }
-              benchmark={compareToFaceitLevel10(
-                profile.stats.preaim,
-                FACEIT_LEVEL_10_BENCHMARK.preaimDeg,
-                "lower-better",
-              )}
-            />
-            <ChartTile
-              label="Accuracy Head"
-              value={profile.stats.accuracy_head !== null ? `${fmt(profile.stats.accuracy_head)}%` : "—"}
-              gauge={
-                profile.stats.accuracy_head !== null
-                  ? { value: profile.stats.accuracy_head, min: 0, max: 50, direction: "higher-better" }
-                  : undefined
-              }
-              benchmark={compareToFaceitLevel10(
-                profile.stats.accuracy_head,
-                FACEIT_LEVEL_10_BENCHMARK.accuracyHeadPct,
-                "higher-better",
-              )}
-            />
+          <div>
+            <p className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-ink-muted">
+              <span className="font-label text-lg font-bold tracking-[0.08em] text-sand uppercase">
+                Contra Nivel 10 de FACEIT
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-3 w-0.5 bg-foreground" aria-hidden /> promedio del Nivel 10
+              </span>
+            </p>
+            <div className="grid grid-cols-1 gap-x-8 gap-y-8 sm:grid-cols-3">
+              <Tile
+                label="Tiempo al daño"
+                value={fmt(profile.stats.reaction_time_ms, 0)}
+                unit="ms"
+                gauge={gauge(profile.stats.reaction_time_ms, 200, 900, "lower-better")}
+                benchmark={{ value: FACEIT_LEVEL_10_BENCHMARK.timeToDamageMs, direction: "lower-better" }}
+                note="Menos es mejor"
+              />
+              <Tile
+                label="Preaim"
+                value={fmt(profile.stats.preaim)}
+                unit="°"
+                gauge={gauge(profile.stats.preaim, 3, 20, "lower-better")}
+                benchmark={{ value: FACEIT_LEVEL_10_BENCHMARK.preaimDeg, direction: "lower-better" }}
+                note="Menos es mejor"
+              />
+              <Tile
+                label="Precisión a la cabeza"
+                value={fmt(profile.stats.accuracy_head)}
+                unit="%"
+                gauge={gauge(profile.stats.accuracy_head, 0, 50)}
+                benchmark={{ value: FACEIT_LEVEL_10_BENCHMARK.accuracyHeadPct, direction: "higher-better" }}
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-2">
-            <ChartTile
-              label="K/D Ratio (promedio)"
-              value={fmt(average(kdSeries), 2)}
-              gauge={
-                kdSeries.length
-                  ? { value: average(kdSeries)!, min: 0, max: 2, direction: "higher-better" }
-                  : undefined
-              }
+          <div className="grid grid-cols-2 gap-x-8 gap-y-8">
+            <Tile
+              label="K/D promedio"
+              value={fmt(kd, 2)}
+              gauge={gauge(kd, 0, 2)}
+              note={kdSeries.length ? `Últimas ${kdSeries.length} partidas` : undefined}
             />
-            <ChartTile
-              label="ADR (promedio)"
-              value={fmt(average(adrSeries), 0)}
-              gauge={
-                adrSeries.length
-                  ? { value: average(adrSeries)!, min: 0, max: 120, direction: "higher-better" }
-                  : undefined
-              }
+            <Tile
+              label="ADR promedio"
+              value={fmt(adr, 0)}
+              gauge={gauge(adr, 0, 120)}
+              note={adrSeries.length ? `Últimas ${adrSeries.length} partidas` : undefined}
             />
           </div>
         </div>

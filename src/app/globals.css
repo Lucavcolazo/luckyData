@@ -11,6 +11,15 @@
   --good: #3ecf6e;
   --warn: #f2b23a;
   --bad: #f0525c;
+  /* Spray-paint red of the "A" marker on the wall. */
+  --paint: #d8423a;
+  --sand: #e9d6b8;
+  /* Results dossier: warm near-black panel, sand ink, sand hairlines. */
+  --panel: #0c0a08;
+  --ink-muted: #a39883;
+  --line: rgba(233, 214, 184, 0.12);
+  /* Second player in comparisons: the blue of the Dust2 walls. */
+  --rival: #8fb0e0;
 }
 
 @theme inline {
@@ -24,6 +33,14 @@
   --color-bad: var(--bad);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-stencil);
+  --font-label: var(--font-shoulders);
+  --color-paint: var(--paint);
+  --color-sand: var(--sand);
+  --color-panel: var(--panel);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-rival: var(--rival);
 }
 
 body {
@@ -45,6 +62,24 @@ body {
 
 .animate-fade-up {
   animation: fade-up 0.5s ease-out both;
+}
+
+/* Hero entrance: the title comes into focus, echoing the scroll blur. */
+@keyframes focus-in {
+  from {
+    opacity: 0;
+    filter: blur(14px);
+    transform: translateY(12px) scale(1.04);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+
+.animate-focus-in {
+  animation: focus-in 1s cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
 @keyframes radar-sweep {
@@ -99,6 +134,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
+  .animate-focus-in,
   .animate-radar-sweep,
   .animate-radar-blip,
   .skeleton {

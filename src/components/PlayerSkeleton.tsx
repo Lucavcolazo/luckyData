@@ -2,95 +2,91 @@ function Bone({ className = "" }: { className?: string }) {
   return <div className={`skeleton ${className}`} />;
 }
 
+/** Mirrors the real dossier layout so nothing jumps when the data lands. */
+function SectionBone() {
+  return (
+    <div className="mb-5 border-b border-line pb-3">
+      <Bone className="h-8 w-48" />
+    </div>
+  );
+}
+
+function TileBone({ featured = false }: { featured?: boolean }) {
+  return (
+    <div className="flex flex-col gap-3 border-t border-line pt-4">
+      <Bone className="h-3.5 w-24" />
+      <Bone className={featured ? "h-16 w-32" : "h-9 w-20"} />
+      <Bone className="h-1.5 w-full" />
+    </div>
+  );
+}
+
 export function PlayerSkeleton() {
   return (
     <div className="flex flex-col" role="status" aria-live="polite" aria-busy="true">
       <span className="sr-only">Cargando perfil…</span>
 
-      <div className="border border-border bg-surface p-6">
-        <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-5">
-            <Bone className="h-[88px] w-[88px]" />
-            <div className="flex flex-col gap-2">
-              <Bone className="h-3 w-28" />
-              <Bone className="h-7 w-44" />
-              <Bone className="h-3 w-36" />
-            </div>
-          </div>
-          <Bone className="h-16 w-40" />
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 gap-6 border-t border-border pt-6 sm:grid-cols-2">
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex items-center gap-5 sm:gap-6">
+          <Bone className="size-20 sm:size-28" />
           <div className="flex flex-col gap-3">
-            <Bone className="h-3 w-32" />
-            <div className="flex flex-wrap gap-2">
-              <Bone className="h-6 w-24" />
-              <Bone className="h-6 w-24" />
-              <Bone className="h-6 w-28" />
-            </div>
-            <Bone className="h-3 w-48" />
+            <Bone className="h-14 w-56 sm:w-72" />
+            <Bone className="h-3.5 w-48" />
           </div>
-          <div className="flex flex-col gap-3 sm:border-l sm:border-border sm:pl-6">
-            <Bone className="h-3 w-24" />
-            <Bone className="h-8 w-32" />
-          </div>
+        </div>
+        <div className="flex w-full flex-col gap-3 sm:w-80">
+          <Bone className="h-12 w-full" />
+          <Bone className="h-1.5 w-full" />
+          <Bone className="h-1.5 w-full" />
+          <Bone className="h-1.5 w-full" />
         </div>
       </div>
 
-      <section className="mt-4">
-        <div className="grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="flex flex-col gap-3 bg-background p-5">
-              <Bone className="h-3 w-20" />
-              <Bone className="h-7 w-24" />
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-10">
-        <Bone className="mb-3 h-3 w-40" />
-        <div className="border border-border bg-surface p-6">
-          <Bone className="h-48 w-full" />
-          <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4 sm:grid-cols-4">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="flex flex-col gap-2">
-                <Bone className="h-3 w-16" />
-                <Bone className="h-5 w-20" />
-              </div>
-            ))}
+      <div className="mt-10 grid grid-cols-1 gap-8 border-t border-line pt-6 md:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="flex flex-col gap-3">
+            <Bone className="h-3.5 w-24" />
+            <Bone className="h-8 w-40" />
           </div>
+        ))}
+      </div>
+
+      <section className="mt-16">
+        <SectionBone />
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+          <Bone className="h-10 w-36" />
+          <Bone className="h-10 w-36" />
         </div>
       </section>
 
-      <section className="mt-10">
-        <Bone className="mb-3 h-3 w-32" />
-        <div className="grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-3 lg:grid-cols-4">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-2 bg-background p-5">
-              <Bone className="h-3 w-20" />
-              <Bone className="h-6 w-16" />
-              <Bone className="h-8 w-full" />
-            </div>
+      <section className="mt-16">
+        <SectionBone />
+        <Bone className="h-56 w-full" />
+      </section>
+
+      <section className="mt-16">
+        <SectionBone />
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <TileBone key={i} featured />
           ))}
         </div>
-      </section>
-
-      <section className="mt-10">
-        <Bone className="mb-3 h-3 w-28" />
-        <div className="border border-border">
+        <div className="mt-12 grid grid-cols-2 gap-8 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-4 border-b border-border px-4 py-3 last:border-b-0"
-            >
-              <Bone className="h-4 w-20" />
-              <Bone className="h-4 w-16" />
-              <Bone className="h-4 w-12" />
-              <Bone className="ml-auto h-4 w-12" />
-            </div>
+            <TileBone key={i} />
           ))}
         </div>
+      </section>
+
+      <section className="mt-16">
+        <SectionBone />
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 border-b border-line py-3">
+            <Bone className="h-7 w-11" />
+            <Bone className="h-4 w-20" />
+            <Bone className="ml-auto h-4 w-12" />
+          </div>
+        ))}
       </section>
     </div>
   );

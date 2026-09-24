@@ -39,7 +39,7 @@ export function compareToFaceitLevel10(
   const better = diffPct >= 0;
 
   return {
-    color: better ? "var(--good)" : "var(--bad)",
+    color: better ? "var(--good)" : "var(--ink-muted)",
     label:
       rounded === 0
         ? "Igual al Nivel 10 de FACEIT"
