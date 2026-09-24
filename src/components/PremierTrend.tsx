@@ -4,6 +4,7 @@ import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YA
 import type { RecentMatchRank } from "@/lib/leetify";
 import { premierRankColor } from "@/lib/rankColors";
 import { PremierBadge } from "@/components/PremierBadge";
+import { SteamIcon } from "@/components/icons/SteamIcon";
 import { Label, SectionHeading } from "@/components/Dossier";
 
 const PREMIER_RANK_TYPE = 11;
@@ -61,7 +62,27 @@ function Stat({ label, children, note }: { label: string; children: React.ReactN
   );
 }
 
-export function PremierTrend({ recentMatches }: { recentMatches: RecentMatchRank[] }) {
+function CurrentRank({ rating }: { rating: number | null }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <span className="flex items-center gap-2 text-ink-muted">
+        <SteamIcon className="size-3.5" />
+        <Label>Rango actual</Label>
+      </span>
+      <PremierBadge rating={rating} />
+    </div>
+  );
+}
+
+/** Current Premier rank, its recent history and the record over those matches. */
+export function PremierTrend({
+  recentMatches,
+  currentRating,
+}: {
+  recentMatches: RecentMatchRank[];
+  /** Leetify's current Premier rating; falls back to the last match in the history. */
+  currentRating: number | null;
+}) {
   const series = recentMatches
     .filter((m) => m.rank_type === PREMIER_RANK_TYPE && m.rank !== null && m.rank > 0)
     .slice()
@@ -69,9 +90,10 @@ export function PremierTrend({ recentMatches }: { recentMatches: RecentMatchRank
 
   if (series.length < 5) {
     return (
-      <section className="mt-16">
-        <SectionHeading>Historial de Premier</SectionHeading>
-        <p className="text-sm text-ink-muted">
+      <section>
+        <SectionHeading>Premier</SectionHeading>
+        <CurrentRank rating={currentRating ?? series[series.length - 1]?.rank ?? null} />
+        <p className="mt-6 text-sm text-ink-muted">
           No hay suficientes partidas de Premier recientes para armar una tendencia.
         </p>
       </section>
@@ -109,8 +131,21 @@ export function PremierTrend({ recentMatches }: { recentMatches: RecentMatchRank
   }
 
   return (
-    <section className="mt-16">
-      <SectionHeading>Historial de Premier</SectionHeading>
+    <section>
+      <SectionHeading>Premier</SectionHeading>
+
+      <div className="mb-10 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
+        <div className="col-span-2 sm:col-span-1">
+          <CurrentRank rating={currentRating ?? current} />
+        </div>
+        <Stat label="Más alto">{max.toLocaleString("es-AR")}</Stat>
+        <Stat label="Más bajo">{min.toLocaleString("es-AR")}</Stat>
+        <Stat label="Récord" note={`Últimas ${series.length} de Premier`}>
+          {wins}
+          <span className="text-lg text-ink-muted"> G</span> · {losses}
+          <span className="text-lg text-ink-muted"> P</span>
+        </Stat>
+      </div>
 
       <div className="h-56 w-full tabular-nums">
         <ResponsiveContainer width="100%" height="100%">
@@ -164,19 +199,6 @@ export function PremierTrend({ recentMatches }: { recentMatches: RecentMatchRank
         <span>{data[data.length - 1].date}</span>
       </div>
 
-      <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
-        <div className="flex flex-col gap-2">
-          <Label>Actual</Label>
-          <PremierBadge rating={current} size="md" />
-        </div>
-        <Stat label="Más alto">{max.toLocaleString("es-AR")}</Stat>
-        <Stat label="Más bajo">{min.toLocaleString("es-AR")}</Stat>
-        <Stat label="Récord" note={`Últimas ${series.length} de Premier`}>
-          {wins}
-          <span className="text-lg text-ink-muted"> G</span> · {losses}
-          <span className="text-lg text-ink-muted"> P</span>
-        </Stat>
-      </div>
     </section>
   );
 }

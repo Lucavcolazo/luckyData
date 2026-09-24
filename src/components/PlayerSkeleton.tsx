@@ -51,13 +51,10 @@ export function PlayerSkeleton() {
         ))}
       </div>
 
-      <section className="mt-16">
-        <SectionBone />
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-          <Bone className="h-10 w-36" />
-          <Bone className="h-10 w-36" />
-        </div>
-      </section>
+      <div className="mt-16 grid grid-cols-2 border border-line sm:w-[28rem]">
+        <Bone className="m-1 h-10" />
+        <Bone className="m-1 h-10 opacity-50" />
+      </div>
 
       <section className="mt-16">
         <SectionBone />

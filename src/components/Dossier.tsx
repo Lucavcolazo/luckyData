@@ -62,3 +62,33 @@ export function Meter({ ratio, mark }: { ratio: number; mark?: number }) {
     </div>
   );
 }
+
+/** Label, big number and a neutral meter: the basic stat block of the dossier. */
+export function StatTile({
+  label,
+  value,
+  unit,
+  ratio,
+  note,
+  featured = false,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+  /** 0-1, already oriented so fuller is better. Omit for no meter. */
+  ratio?: number | null;
+  note?: React.ReactNode;
+  featured?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-3 border-t border-line pt-4">
+      <Label>{label}</Label>
+      <span className={`font-label leading-none font-bold tabular-nums ${featured ? "text-6xl sm:text-7xl" : "text-4xl"}`}>
+        {value}
+        {unit && value !== "—" && <span className="ml-0.5 text-[0.5em] text-ink-muted">{unit}</span>}
+      </span>
+      {ratio !== undefined && ratio !== null && <Meter ratio={ratio} />}
+      {note && <span className="text-xs text-ink-muted">{note}</span>}
+    </div>
+  );
+}

@@ -20,7 +20,7 @@ function sourceLabel(source: string) {
   return SOURCE_LABELS[source] ?? source.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 }
 
-function mapDisplayName(mapName: string) {
+export function mapDisplayName(mapName: string) {
   const clean = mapName.replace(/^de_|^cs_/, "");
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
@@ -28,9 +28,9 @@ function mapDisplayName(mapName: string) {
 const fmt = (n: number, decimals: number) =>
   n.toLocaleString("es-AR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 
-type Outcome = "win" | "loss" | "tie" | null;
+export type Outcome = "win" | "loss" | "tie" | null;
 
-function ResultMark({ outcome, score }: { outcome: Outcome; score: string }) {
+export function ResultMark({ outcome, score }: { outcome: Outcome; score: string }) {
   const letter = outcome === "win" ? "G" : outcome === "loss" ? "P" : outcome === "tie" ? "E" : "–";
   const label = outcome === "win" ? "Victoria" : outcome === "loss" ? "Derrota" : outcome === "tie" ? "Empate" : "";
   const tone =

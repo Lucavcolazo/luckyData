@@ -44,14 +44,6 @@ export const COMPARE_SECTIONS: CompareSection[] = [
     metrics: [
       { key: "premier", label: "Premier", direction: "higher-better", get: (p) => p.leetify?.ranks.premier ?? null, format: num(0) },
       { key: "faceit", label: "FACEIT ELO", direction: "higher-better", get: (p) => p.faceit?.elo ?? null, format: num(0) },
-      {
-        key: "gc",
-        label: "Gamers Club",
-        direction: "higher-better",
-        get: () => null,
-        format: num(0),
-        note: "Próximamente",
-      },
     ],
   },
   {
