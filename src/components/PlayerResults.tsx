@@ -11,7 +11,7 @@ import { LeetifyMaps } from "@/components/LeetifyMaps";
 import { FaceitSection } from "@/components/FaceitSection";
 import { StatsSwitch, type StatsSource } from "@/components/StatsSwitch";
 import { StatsMascot } from "@/components/StatsMascot";
-import { analyzeSuspicion, METRIC_TAB, type SuspectMetric } from "@/lib/suspicion";
+import { analyzePlatformGap, analyzeSuspicion, METRIC_TAB, type SuspectMetric } from "@/lib/suspicion";
 import { VerdictStrip } from "@/components/VerdictStrip";
 import { metricAnchor } from "@/components/Dossier";
 
@@ -29,28 +29,31 @@ export function PlayerResults({
   onRetryPart?: (name: PartName) => void;
 }) {
   const [source, setSource] = useState<StatsSource>("cs2");
+  const [onlyAtypical, setOnlyAtypical] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const verdictRef = useRef<HTMLElement>(null);
   const leetify = parts.leetify;
   const faceit = parts.faceit;
 
   // The mascot judges Leetify and FACEIT numbers together, so it waits for both.
-  const suspicion = useMemo(() => {
-    if (!leetify || !faceit) return null;
+  const { suspicion, platformGap } = useMemo(() => {
+    if (!leetify || !faceit) return { suspicion: null, platformGap: null };
     const player: PlayerData = { ...core, ...leetify, ...faceit, inventory: { status: "error" } };
-    return analyzeSuspicion(player);
+    return { suspicion: analyzeSuspicion(player), platformGap: analyzePlatformGap(player) };
   }, [core, leetify, faceit]);
 
   /** From a verdict chip to its tile: switch to the tile's tab, scroll there and flash it. */
   function jumpToMetric(key: SuspectMetric) {
     setSource(METRIC_TAB[key]);
+    if (key === "matches") setOnlyAtypical(true);
     // Two frames: one for the tab panel to remount, one for layout.
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
         const el = document.getElementById(metricAnchor(key));
         if (!el) return;
         const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+        // The match list is taller than the screen: land on its heading instead of its middle.
+        el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: key === "matches" ? "start" : "center" });
         el.classList.remove("metric-flash");
         void el.offsetWidth; // restart the animation if it's already running
         el.classList.add("metric-flash");
@@ -60,7 +63,9 @@ export function PlayerResults({
 
   return (
     <div ref={rootRef} className="flex flex-col">
-      {suspicion && <StatsMascot report={suspicion} watchRef={rootRef} hideWhileVisibleRef={verdictRef} />}
+      {suspicion && (
+        <StatsMascot report={suspicion} gap={platformGap} watchRef={rootRef} hideWhileVisibleRef={verdictRef} />
+      )}
 
       <AccountOverviewCard
         summary={core.summary}
@@ -105,7 +110,13 @@ export function PlayerResults({
                 currentRating={leetify.leetify?.ranks.premier ?? null}
               />
               <LeetifyMaps matches={leetify.leetifyMatches} steamid64={core.steamid} />
-              <LeetifyMatchHistory matches={leetify.leetifyMatches} steamid64={core.steamid} />
+              <LeetifyMatchHistory
+                matches={leetify.leetifyMatches}
+                steamid64={core.steamid}
+                atypical={suspicion?.atypicalMatches}
+                onlyAtypical={onlyAtypical}
+                onOnlyAtypicalChange={setOnlyAtypical}
+              />
             </>
           )
         ) : faceit ? (

@@ -79,7 +79,8 @@ Un triangulito que flota en la esquina y reacciona a lo que ve en las estadísti
 
 | Cómo está | Qué significa |
 |---|---|
-| 😌 **Tranquila**, te sigue con la mirada | Ninguna métrica pasa los umbrales. |
+| 🧐 **Achina los ojos** y los mueve de lado a lado | Está analizando las estadísticas. |
+| 👀 **Abre bien los ojos** y te sigue con la mirada | Ninguna métrica pasa los umbrales. |
 | 🤨 **Mira de reojo**, con los ojos entrecerrados | Hay algún número para mirar. |
 | ❗ **Se transforma en un "!"** rojo | Varias métricas están muy fuera de lo común. |
 | 😴 **Duerme** | No hay datos suficientes para opinar. |

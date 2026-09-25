@@ -33,8 +33,8 @@ export const VerdictStrip = forwardRef<
         role="status"
         aria-live="polite"
       >
-        <div className="size-14 shrink-0 opacity-60 sm:size-16">
-          <Blob level="unknown" />
+        <div className="size-14 shrink-0 sm:size-16">
+          <Blob level="analyzing" />
         </div>
         <div className="flex flex-col gap-2">
           <p className="font-display text-2xl leading-none font-extrabold text-sand uppercase sm:text-3xl">

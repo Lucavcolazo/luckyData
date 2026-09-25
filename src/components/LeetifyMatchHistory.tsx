@@ -3,7 +3,8 @@
 import { useState } from "react";
 import type { LeetifyMatch } from "@/lib/leetify";
 import { MapIcon } from "@/components/MapIcon";
-import { SandLink, SectionHeading } from "@/components/Dossier";
+import { metricAnchor, SandLink, SectionHeading } from "@/components/Dossier";
+import type { AtypicalMatch } from "@/lib/suspicion";
 
 const PAGE_SIZE = 10;
 
@@ -49,14 +50,34 @@ export function ResultMark({ outcome, score }: { outcome: Outcome; score: string
   );
 }
 
+/** "Atípica · 290 ms · 2,8°": the numbers that got a match flagged, under its map. */
+function AtypicalNote({ match }: { match: AtypicalMatch }) {
+  return (
+    <span className="text-xs text-warn">
+      <span className="font-label font-bold tracking-[0.1em] uppercase">Atípica</span>
+      {match.hits.map((h) => ` · ${h.value}`).join("")}
+    </span>
+  );
+}
+
 export function LeetifyMatchHistory({
   matches,
   steamid64,
+  atypical = [],
+  onlyAtypical = false,
+  onOnlyAtypicalChange,
 }: {
   matches: LeetifyMatch[];
   steamid64: string;
+  /** Matches the suspicion analysis flagged one by one. */
+  atypical?: AtypicalMatch[];
+  /** Lifted so the verdict strip can open the list already filtered. */
+  onlyAtypical?: boolean;
+  onOnlyAtypicalChange?: (only: boolean) => void;
 }) {
   const [visible, setVisible] = useState(PAGE_SIZE);
+  const atypicalById = new Map(atypical.map((a) => [a.id, a]));
+  const filtering = onlyAtypical && atypical.length > 0;
 
   const rows = matches
     .map((match) => {
@@ -87,17 +108,33 @@ export function LeetifyMatchHistory({
         kd: me.kd_ratio !== null ? fmt(me.kd_ratio, 2) : "—",
         adr: me.total_damage !== null && me.rounds_count ? fmt(me.total_damage / me.rounds_count, 0) : "—",
         hs: me.total_hs_kills ?? "—",
+        atypical: atypicalById.get(match.id),
       };
     })
-    .filter((r): r is NonNullable<typeof r> => r !== null);
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+    .filter((r) => !filtering || r.atypical);
 
   const shown = rows.slice(0, visible);
 
   return (
-    <section className="mt-16">
+    <section id={metricAnchor("matches")} className="mt-16 scroll-mt-8">
       <SectionHeading
         aside={
-          <SandLink href={`https://leetify.com/public/profile/${steamid64}/matches`}>Ver todas en Leetify</SandLink>
+          <span className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            {atypical.length > 0 && onOnlyAtypicalChange && (
+              <button
+                type="button"
+                onClick={() => onOnlyAtypicalChange(!onlyAtypical)}
+                aria-pressed={filtering}
+                className={`border px-3 py-1.5 font-label text-sm font-bold tracking-[0.12em] uppercase transition-[background-color,color,transform] duration-150 active:scale-[0.97] ${
+                  filtering ? "border-warn bg-warn text-panel" : "border-warn/55 text-warn hover:bg-warn/10"
+                }`}
+              >
+                Solo atípicas · {atypical.length}
+              </button>
+            )}
+            <SandLink href={`https://leetify.com/public/profile/${steamid64}/matches`}>Ver todas en Leetify</SandLink>
+          </span>
         }
       >
         Últimas partidas
@@ -125,11 +162,19 @@ export function LeetifyMatchHistory({
             </thead>
             <tbody>
               {shown.map((r) => (
-                <tr key={r.id} className="border-b border-line transition-colors hover:bg-sand/[0.04]">
+                <tr
+                  key={r.id}
+                  className={`border-b border-line transition-colors ${
+                    r.atypical ? "bg-warn/[0.05] hover:bg-warn/[0.09]" : "hover:bg-sand/[0.04]"
+                  }`}
+                >
                   <th scope="row" className="py-3 pr-4 text-left font-normal">
                     <span className="flex items-center gap-3">
                       <MapIcon mapName={r.map} />
-                      {mapDisplayName(r.map)}
+                      <span className="flex flex-col gap-0.5">
+                        {mapDisplayName(r.map)}
+                        {r.atypical && <AtypicalNote match={r.atypical} />}
+                      </span>
                     </span>
                   </th>
                   <td className="py-3 pr-4">
@@ -152,13 +197,17 @@ export function LeetifyMatchHistory({
           {/* Mobile: one row per match, result first. */}
           <ul className="md:hidden">
             {shown.map((r) => (
-              <li key={r.id} className="flex items-center gap-3 border-b border-line py-3">
+              <li
+                key={r.id}
+                className={`flex items-center gap-3 border-b border-line py-3 ${r.atypical ? "bg-warn/[0.05]" : ""}`}
+              >
                 <MapIcon mapName={r.map} />
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <ResultMark outcome={r.outcome} score={r.score} />
                   <span className="truncate text-xs text-ink-muted">
                     {mapDisplayName(r.map)} · {r.source} · {r.dateShort}
                   </span>
+                  {r.atypical && <AtypicalNote match={r.atypical} />}
                 </div>
                 <div className="flex flex-col items-end gap-0.5 text-sm tabular-nums">
                   <span>{r.rating}</span>
@@ -172,7 +221,7 @@ export function LeetifyMatchHistory({
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[13px] text-ink-muted">
             <span className="tabular-nums">
-              {shown.length} de {rows.length} partidas · K – M: kills y muertes
+              {shown.length} de {rows.length} {filtering ? "atípicas" : "partidas"} · K – M: kills y muertes
             </span>
             {visible < rows.length && (
               <button

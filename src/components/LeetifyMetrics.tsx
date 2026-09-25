@@ -14,6 +14,7 @@ import {
   StatGrid,
 } from "@/components/Dossier";
 import { flagFor, type SuspectMetric, type SuspicionReport } from "@/lib/suspicion";
+import { mean, playerMatchStats, present, type MatchFineStats } from "@/lib/matchMetrics";
 
 type GaugeSpec = { value: number; min: number; max: number; direction: Direction };
 
@@ -68,8 +69,32 @@ const fmt = (n: number | null, decimals = 1) =>
 
 const signed = (n: number | null, decimals = 2) => (n === null ? "—" : `${n > 0 ? "+" : ""}${fmt(n, decimals)}`);
 
-const average = (values: number[]) =>
-  values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
+/** "Recent form" window, and how many of those matches need the number for it to show. */
+const RECENT_MATCHES = 20;
+const RECENT_MIN = 10;
+/** Closer than this to the profile value it reads as steady. */
+const RECENT_STEADY = 0.05;
+
+/**
+ * The last matches' average against the profile number, in words. The profile covers a longer
+ * stretch, so a sudden change shows up here first.
+ */
+function recentForm(
+  matches: MatchFineStats[],
+  pick: (m: MatchFineStats) => number | null,
+  profileValue: number | null,
+  direction: Direction,
+  format: (v: number) => string,
+): string | undefined {
+  const values = present(matches.slice(0, RECENT_MATCHES).map(pick));
+  const recent = mean(values);
+  if (recent === null || values.length < RECENT_MIN || !profileValue) return undefined;
+
+  const change = (recent - profileValue) / profileValue;
+  const better = direction === "higher-better" ? change > 0 : change < 0;
+  const trend = Math.abs(change) < RECENT_STEADY ? "estable" : better ? "mejorando" : "empeorando";
+  return `Últimas ${values.length}: ${format(recent)}, ${trend}`;
+}
 
 /** Serie cronológica (más vieja a más nueva) de una métrica por partida, para el jugador consultado. */
 function matchSeries(
@@ -104,8 +129,9 @@ export function LeetifyMetrics({
   const adrSeries = matchSeries(matches, steamid64, (s) =>
     s.total_damage !== null && s.rounds_count ? s.total_damage / s.rounds_count : null,
   );
-  const kd = average(kdSeries);
-  const adr = average(adrSeries);
+  const kd = mean(kdSeries);
+  const adr = mean(adrSeries);
+  const fine = playerMatchStats(matches, steamid64);
 
   return (
     <section className="mt-16">
@@ -135,6 +161,7 @@ export function LeetifyMetrics({
             unit="ms"
             gauge={gauge(profile.stats.reaction_time_ms, 200, 900, "lower-better")}
             benchmark={{ value: FACEIT_LEVEL_10_BENCHMARK.timeToDamageMs, direction: "lower-better" }}
+            note={recentForm(fine, (m) => m.ttdMs, profile.stats.reaction_time_ms, "lower-better", (v) => `${fmt(v, 0)} ms`)}
           />
           <Tile
             label="Preaim"
@@ -144,6 +171,7 @@ export function LeetifyMetrics({
             unit="°"
             gauge={gauge(profile.stats.preaim, 3, 20, "lower-better")}
             benchmark={{ value: FACEIT_LEVEL_10_BENCHMARK.preaimDeg, direction: "lower-better" }}
+            note={recentForm(fine, (m) => m.preaimDeg, profile.stats.preaim, "lower-better", (v) => `${fmt(v)}°`)}
           />
           <Tile
             label="Precisión a la cabeza"
@@ -153,6 +181,7 @@ export function LeetifyMetrics({
             unit="%"
             gauge={gauge(profile.stats.accuracy_head, 0, 50)}
             benchmark={{ value: FACEIT_LEVEL_10_BENCHMARK.accuracyHeadPct, direction: "higher-better" }}
+            note={recentForm(fine, (m) => m.headPct, profile.stats.accuracy_head, "higher-better", (v) => `${fmt(v)}%`)}
           />
           <Tile
             label="Puntería"
