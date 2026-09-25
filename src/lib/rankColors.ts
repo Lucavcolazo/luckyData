@@ -1,10 +1,3 @@
-export function trustScoreColor(score: number): string {
-  if (score >= 85) return "var(--good)";
-  if (score >= 65) return "var(--warn)";
-  if (score >= 40) return "#f2872f";
-  return "var(--bad)";
-}
-
 export interface PremierTier {
   /** Tier colour: the two stripes and the speed lines. */
   color: string;

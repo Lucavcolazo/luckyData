@@ -12,22 +12,11 @@ export const FACEIT_LEVEL_10_BENCHMARK = {
   accuracyHeadPct: 21.89,
 };
 
-export interface BenchmarkComparison {
-  label: string;
-  color: string;
-  /** Mejora tan grande sobre Nivel 10 FACEIT que vale la pena marcarla como atípica (no es una acusación). */
-  unusual: boolean;
-}
-
-/** Umbral a partir del cual una mejora sobre Nivel 10 FACEIT se marca como estadísticamente atípica. */
-const UNUSUAL_BETTER_THRESHOLD_PCT = 40;
-
-/** Compara un valor del jugador contra el promedio de Nivel 10 FACEIT (ver benchmark arriba). */
-export function compareToFaceitLevel10(
-  value: number | null,
-  benchmark: number,
-  direction: Direction,
-): BenchmarkComparison | null {
+/**
+ * How a value sits against the FACEIT level 10 average, as a plain label. Deliberately neutral:
+ * whether a number is suspicious is decided in one place, src/lib/suspicion.ts.
+ */
+export function compareToFaceitLevel10(value: number | null, benchmark: number, direction: Direction): string | null {
   if (value === null || benchmark === 0) return null;
 
   const diffPct =
@@ -36,14 +25,6 @@ export function compareToFaceitLevel10(
       : ((benchmark - value) / benchmark) * 100;
 
   const rounded = Math.round(Math.abs(diffPct));
-  const better = diffPct >= 0;
-
-  return {
-    color: better ? "var(--good)" : "var(--ink-muted)",
-    label:
-      rounded === 0
-        ? "Igual al Nivel 10 de FACEIT"
-        : `${rounded}% ${better ? "mejor" : "peor"} que Nivel 10 FACEIT`,
-    unusual: better && rounded >= UNUSUAL_BETTER_THRESHOLD_PCT,
-  };
+  if (rounded === 0) return "Igual al Nivel 10 de FACEIT";
+  return `${rounded}% ${diffPct >= 0 ? "mejor" : "peor"} que Nivel 10 FACEIT`;
 }

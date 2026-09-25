@@ -1,3 +1,5 @@
+import type { SuspectMetric, SuspicionFlag } from "@/lib/suspicion";
+
 /** Shared pieces of the results "dossier": stencil section titles, sand links and neutral meters. */
 
 export function SectionHeading({
@@ -73,6 +75,31 @@ export function StatGrid({ children }: { children: React.ReactNode }) {
 
 export const STAT_CELL = "flex min-w-0 flex-col gap-2.5 border-r border-b border-line p-4";
 
+/** Extra classes for a stat cell the suspicion analysis flagged: a paint (strong) or amber outline. */
+export function flagCellClass(flag?: SuspicionFlag): string {
+  if (!flag) return "";
+  return flag.strong
+    ? "bg-paint/[0.07] shadow-[inset_0_0_0_1px_var(--paint)]"
+    : "bg-warn/[0.05] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--warn)_55%,transparent)]";
+}
+
+export function flagValueClass(flag?: SuspicionFlag): string {
+  if (!flag) return "";
+  return flag.strong ? "text-paint" : "text-warn";
+}
+
+/** The "why" line under a flagged value. */
+export function FlagNote({ flag }: { flag: SuspicionFlag }) {
+  return (
+    <span className={`text-xs ${flag.strong ? "text-paint" : "text-warn"}`}>
+      <span className="font-label font-bold tracking-[0.1em] uppercase">Atípico</span> · {flag.reason}
+    </span>
+  );
+}
+
+/** Anchor id for a flaggable tile, so the verdict strip can jump to it. */
+export const metricAnchor = (key: SuspectMetric) => `metric-${key}`;
+
 /** Label, number and a neutral meter: one cell of a StatGrid. */
 export function StatTile({
   label,
@@ -80,6 +107,8 @@ export function StatTile({
   unit,
   ratio,
   note,
+  metric,
+  flag,
 }: {
   label: string;
   value: string;
@@ -87,15 +116,19 @@ export function StatTile({
   /** 0-1, already oriented so fuller is better. Omit for no meter. */
   ratio?: number | null;
   note?: React.ReactNode;
+  /** Set on tiles the suspicion analysis can flag. */
+  metric?: SuspectMetric;
+  flag?: SuspicionFlag;
 }) {
   return (
-    <div className={STAT_CELL}>
+    <div id={metric ? metricAnchor(metric) : undefined} className={`${STAT_CELL} scroll-mt-28 ${flagCellClass(flag)}`}>
       <Label>{label}</Label>
-      <span className="font-label text-4xl leading-none font-bold tabular-nums">
+      <span className={`font-label text-4xl leading-none font-bold tabular-nums ${flagValueClass(flag)}`}>
         {value}
         {unit && value !== "—" && <span className="ml-0.5 text-[0.5em] text-ink-muted">{unit}</span>}
       </span>
       {ratio !== undefined && ratio !== null && <Meter ratio={ratio} />}
+      {flag && <FlagNote flag={flag} />}
       {note && <span className="text-xs text-ink-muted">{note}</span>}
     </div>
   );

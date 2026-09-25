@@ -11,7 +11,9 @@ import { LeetifyMaps } from "@/components/LeetifyMaps";
 import { FaceitSection } from "@/components/FaceitSection";
 import { StatsSwitch, type StatsSource } from "@/components/StatsSwitch";
 import { StatsMascot } from "@/components/StatsMascot";
-import { analyzeSuspicion } from "@/lib/suspicion";
+import { analyzeSuspicion, METRIC_TAB, type SuspectMetric } from "@/lib/suspicion";
+import { VerdictStrip } from "@/components/VerdictStrip";
+import { metricAnchor } from "@/components/Dossier";
 
 /**
  * One player's page. The Steam side (`core`) is there from the start; each of `parts` shows up
@@ -28,6 +30,7 @@ export function PlayerResults({
 }) {
   const [source, setSource] = useState<StatsSource>("cs2");
   const rootRef = useRef<HTMLDivElement>(null);
+  const verdictRef = useRef<HTMLElement>(null);
   const leetify = parts.leetify;
   const faceit = parts.faceit;
 
@@ -38,9 +41,26 @@ export function PlayerResults({
     return analyzeSuspicion(player);
   }, [core, leetify, faceit]);
 
+  /** From a verdict chip to its tile: switch to the tile's tab, scroll there and flash it. */
+  function jumpToMetric(key: SuspectMetric) {
+    setSource(METRIC_TAB[key]);
+    // Two frames: one for the tab panel to remount, one for layout.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const el = document.getElementById(metricAnchor(key));
+        if (!el) return;
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+        el.classList.remove("metric-flash");
+        void el.offsetWidth; // restart the animation if it's already running
+        el.classList.add("metric-flash");
+      }),
+    );
+  }
+
   return (
     <div ref={rootRef} className="flex flex-col">
-      {suspicion && <StatsMascot report={suspicion} watchRef={rootRef} />}
+      {suspicion && <StatsMascot report={suspicion} watchRef={rootRef} hideWhileVisibleRef={verdictRef} />}
 
       <AccountOverviewCard
         summary={core.summary}
@@ -53,7 +73,9 @@ export function PlayerResults({
         trust={core.trust}
       />
 
-      <div className="animate-fade-up mt-10" style={{ animationDelay: "60ms" }}>
+      <VerdictStrip ref={verdictRef} report={suspicion} onJump={jumpToMetric} />
+
+      <div className="animate-fade-up mt-8" style={{ animationDelay: "60ms" }}>
         <StatsSwitch value={source} onChange={setSource} idPrefix="player" />
       </div>
 
@@ -72,7 +94,12 @@ export function PlayerResults({
           ) : (
             <>
               {/* Performance first: it's what tells you at a glance whether a profile looks off. */}
-              <LeetifyMetrics profile={leetify.leetify} matches={leetify.leetifyMatches} steamid64={core.steamid} />
+              <LeetifyMetrics
+                profile={leetify.leetify}
+                matches={leetify.leetifyMatches}
+                steamid64={core.steamid}
+                suspicion={suspicion}
+              />
               <PremierTrend
                 recentMatches={leetify.leetify?.recent_matches ?? []}
                 currentRating={leetify.leetify?.ranks.premier ?? null}
@@ -82,7 +109,7 @@ export function PlayerResults({
             </>
           )
         ) : faceit ? (
-          <FaceitSection faceit={faceit.faceit} />
+          <FaceitSection faceit={faceit.faceit} suspicion={suspicion} />
         ) : (
           <StatsPanelSkeleton label="Cargando datos de FACEIT…" />
         )}

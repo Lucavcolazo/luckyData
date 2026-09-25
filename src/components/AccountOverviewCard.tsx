@@ -146,12 +146,12 @@ export function AccountOverviewCard({
 
         <div className="grid shrink-0 grid-cols-2 gap-6 border-t border-line pt-5 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8">
           <TrustScoreCard result={trust} />
-          <div className="flex flex-col gap-2">
+          <div className="flex min-w-0 flex-col gap-2">
             <Label>Inventario CS2</Label>
             {inventory === null ? (
               <span className="skeleton mt-1 h-10 w-36" role="status" aria-label="Calculando inventario…" />
             ) : inventory.status === "ok" ? (
-              <span className="font-label text-5xl leading-[0.85] font-bold tabular-nums">
+              <span className="font-label text-4xl leading-[0.85] font-bold break-all tabular-nums sm:text-5xl">
                 {usdFmt.format(inventory.totalValueUsd)}
               </span>
             ) : (

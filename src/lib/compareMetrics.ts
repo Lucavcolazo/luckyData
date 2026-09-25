@@ -1,6 +1,7 @@
 import type { Direction } from "@/lib/gauge";
 import type { PlayerData } from "@/lib/playerData";
 import type { StatsSource } from "@/components/StatsSwitch";
+import type { SuspectMetric } from "@/lib/suspicion";
 
 const PREMIER_RANK_TYPE = 11;
 
@@ -184,6 +185,15 @@ const FACEIT_SECTIONS: CompareSection[] = [
 export const COMPARE_SOURCES: Record<StatsSource, CompareSection[]> = {
   cs2: CS2_SECTIONS,
   faceit: FACEIT_SECTIONS,
+};
+
+/** Compare rows that the suspicion analysis also judges, and the metric they map to there. */
+export const SUSPECT_METRIC: Partial<Record<string, SuspectMetric>> = {
+  aim: "aim",
+  ttd: "ttd",
+  preaim: "preaim",
+  hs: "hs",
+  fHs: "faceitHs",
 };
 
 export type Winner = "a" | "b" | "tie" | null;

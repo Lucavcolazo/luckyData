@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# raw demo recording (npm run demo); the .mp4 and .gif are the ones to commit
+docs/demo.webm
+docs/.demo-tmp/

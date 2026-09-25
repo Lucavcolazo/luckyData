@@ -1,7 +1,19 @@
 import type { LeetifyMatch, LeetifyProfile, LeetifyStatus } from "@/lib/leetify";
 import { gaugeRatio, type Direction } from "@/lib/gauge";
 import { compareToFaceitLevel10, FACEIT_LEVEL_10_BENCHMARK } from "@/lib/proBenchmarks";
-import { Label, Meter, SandLink, SectionHeading, STAT_CELL, StatGrid } from "@/components/Dossier";
+import {
+  FlagNote,
+  flagCellClass,
+  flagValueClass,
+  Label,
+  metricAnchor,
+  Meter,
+  SandLink,
+  SectionHeading,
+  STAT_CELL,
+  StatGrid,
+} from "@/components/Dossier";
+import { flagFor, type SuspectMetric, type SuspicionReport } from "@/lib/suspicion";
 
 type GaugeSpec = { value: number; min: number; max: number; direction: Direction };
 
@@ -12,6 +24,8 @@ function Tile({
   gauge,
   benchmark,
   note,
+  metric,
+  suspicion,
 }: {
   label: string;
   value: string;
@@ -20,14 +34,18 @@ function Tile({
   /** Reference value drawn as a tick on the meter, in the gauge's units. */
   benchmark?: { value: number; direction: Direction } | null;
   note?: React.ReactNode;
+  /** Set on tiles the suspicion analysis can flag; the flag itself comes from `suspicion`. */
+  metric?: SuspectMetric;
+  suspicion?: SuspicionReport | null;
 }) {
+  const flag = metric ? flagFor(suspicion, metric) : undefined;
   const comparison =
     gauge && benchmark ? compareToFaceitLevel10(gauge.value, benchmark.value, benchmark.direction) : null;
 
   return (
-    <div className={STAT_CELL}>
+    <div id={metric ? metricAnchor(metric) : undefined} className={`${STAT_CELL} scroll-mt-28 ${flagCellClass(flag)}`}>
       <Label>{label}</Label>
-      <span className="font-label text-4xl leading-none font-bold tabular-nums">
+      <span className={`font-label text-4xl leading-none font-bold tabular-nums ${flagValueClass(flag)}`}>
         {value}
         {unit && value !== "—" && <span className="ml-0.5 text-[0.5em] text-ink-muted">{unit}</span>}
       </span>
@@ -37,14 +55,7 @@ function Tile({
           mark={benchmark ? gaugeRatio(benchmark.value, gauge.min, gauge.max, gauge.direction) : undefined}
         />
       )}
-      {comparison && (
-        <span className="text-xs" style={{ color: comparison.color }}>
-          {comparison.label}
-        </span>
-      )}
-      {comparison?.unusual && (
-        <span className="text-xs text-paint">Valor atípico frente al resto</span>
-      )}
+      {flag ? <FlagNote flag={flag} /> : comparison && <span className="text-xs text-ink-muted">{comparison}</span>}
       {note && <span className="text-xs text-ink-muted">{note}</span>}
     </div>
   );
@@ -81,10 +92,13 @@ export function LeetifyMetrics({
   profile,
   matches,
   steamid64,
+  suspicion,
 }: {
   profile: LeetifyProfile | null;
   matches: LeetifyMatch[];
   steamid64: string;
+  /** Marks the tiles the suspicion analysis flagged. */
+  suspicion?: SuspicionReport | null;
 }) {
   const kdSeries = matchSeries(matches, steamid64, (s) => s.kd_ratio);
   const adrSeries = matchSeries(matches, steamid64, (s) =>
@@ -115,6 +129,8 @@ export function LeetifyMetrics({
         <StatGrid>
           <Tile
             label="Tiempo al daño"
+            metric="ttd"
+            suspicion={suspicion}
             value={fmt(profile.stats.reaction_time_ms, 0)}
             unit="ms"
             gauge={gauge(profile.stats.reaction_time_ms, 200, 900, "lower-better")}
@@ -122,6 +138,8 @@ export function LeetifyMetrics({
           />
           <Tile
             label="Preaim"
+            metric="preaim"
+            suspicion={suspicion}
             value={fmt(profile.stats.preaim)}
             unit="°"
             gauge={gauge(profile.stats.preaim, 3, 20, "lower-better")}
@@ -129,12 +147,20 @@ export function LeetifyMetrics({
           />
           <Tile
             label="Precisión a la cabeza"
+            metric="hs"
+            suspicion={suspicion}
             value={fmt(profile.stats.accuracy_head)}
             unit="%"
             gauge={gauge(profile.stats.accuracy_head, 0, 50)}
             benchmark={{ value: FACEIT_LEVEL_10_BENCHMARK.accuracyHeadPct, direction: "higher-better" }}
           />
-          <Tile label="Puntería" value={fmt(profile.rating.aim)} gauge={gauge(profile.rating.aim, 0, 100)} />
+          <Tile
+            label="Puntería"
+            value={fmt(profile.rating.aim)}
+            gauge={gauge(profile.rating.aim, 0, 100)}
+            metric="aim"
+            suspicion={suspicion}
+          />
           <Tile
             label="K/D promedio"
             value={fmt(kd, 2)}

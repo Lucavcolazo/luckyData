@@ -9,6 +9,7 @@ import { CountryFlag } from "@/components/CountryFlag";
 import { MapIcon } from "@/components/MapIcon";
 import { MapGrid } from "@/components/MapGrid";
 import { mapDisplayName, ResultMark } from "@/components/LeetifyMatchHistory";
+import { flagFor, type SuspicionReport } from "@/lib/suspicion";
 import { Label, SandLink, SectionHeading, StatGrid, StatTile } from "@/components/Dossier";
 
 const PAGE_SIZE = 10;
@@ -197,7 +198,7 @@ function LevelSection({ faceit }: { faceit: FaceitPlayer }) {
   );
 }
 
-function PerformanceSection({ faceit }: { faceit: FaceitPlayer }) {
+function PerformanceSection({ faceit, suspicion }: { faceit: FaceitPlayer; suspicion?: SuspicionReport | null }) {
   const life = faceit.lifetime;
   return (
     <section className="animate-fade-up mt-10" style={{ animationDelay: "120ms" }}>
@@ -217,7 +218,14 @@ function PerformanceSection({ faceit }: { faceit: FaceitPlayer }) {
         <StatGrid>
           <StatTile label="K/D promedio" value={fmt(life.kd, 2)} ratio={ratio(life.kd, 2)} />
           <StatTile label="ADR" value={fmt(life.adr, 1)} ratio={ratio(life.adr, 120)} />
-          <StatTile label="Headshots" value={fmt(life.hsPct)} unit="%" ratio={ratio(life.hsPct, 100)} />
+          <StatTile
+            label="Headshots"
+            value={fmt(life.hsPct)}
+            unit="%"
+            ratio={ratio(life.hsPct, 100)}
+            metric="faceitHs"
+            flag={flagFor(suspicion, "faceitHs")}
+          />
           <StatTile label="Victorias" value={fmt(life.winRate)} unit="%" ratio={ratio(life.winRate, 100)} />
           <StatTile
             label="Entradas"
@@ -387,7 +395,14 @@ function MatchesSection({ faceit }: { faceit: FaceitPlayer }) {
   );
 }
 
-export function FaceitSection({ faceit }: { faceit: FaceitPlayer | null }) {
+export function FaceitSection({
+  faceit,
+  suspicion,
+}: {
+  faceit: FaceitPlayer | null;
+  /** Marks the tiles the suspicion analysis flagged. */
+  suspicion?: SuspicionReport | null;
+}) {
   if (!faceit) {
     return (
       <section className="py-12 text-center">
@@ -401,7 +416,7 @@ export function FaceitSection({ faceit }: { faceit: FaceitPlayer | null }) {
     <div className="flex flex-col">
       <ProfileHeader faceit={faceit} />
       {/* Performance right under the header, the rank detail after it. */}
-      <PerformanceSection faceit={faceit} />
+      <PerformanceSection faceit={faceit} suspicion={suspicion} />
       <LevelSection faceit={faceit} />
       <MapsSection faceit={faceit} />
       <MatchesSection faceit={faceit} />

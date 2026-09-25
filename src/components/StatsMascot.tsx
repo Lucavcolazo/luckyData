@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type { SuspicionLevel, SuspicionReport } from "@/lib/suspicion";
 
-const COPY: Record<SuspicionLevel, { title: string; body: string }> = {
+export const COPY: Record<SuspicionLevel, { title: string; body: string }> = {
   unknown: { title: "Sin datos", body: "No hay estadísticas suficientes para opinar sobre este perfil." },
-  clean: { title: "Todo en orden", body: "No veo nada fuera de lo común en sus números." },
+  clean: { title: "Nada fuera de lo común", body: "Ninguna métrica pasa los umbrales de sospecha." },
   watch: { title: "Mmm… mirá esto", body: "Hay números por encima de lo normal:" },
   alert: { title: "¡Ojo con este perfil!", body: "Varias métricas están muy fuera de lo común:" },
 };
@@ -62,7 +62,7 @@ function Eye({ cx, w, h, tilt }: { cx: number; w: number; h: number; tilt: numbe
  * Our own blob: a sand triangle with pill eyes. Calm follows the pointer and blinks, "watch"
  * squints and glances side to side, "alert" keeps turning into a red "!", and no data sleeps.
  */
-function Blob({ level }: { level: SuspicionLevel }) {
+export function Blob({ level }: { level: SuspicionLevel }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const gaze = usePointerGaze(level === "clean", svgRef);
   const eye = EYES[level];
@@ -97,12 +97,16 @@ function Blob({ level }: { level: SuspicionLevel }) {
 export function StatsMascot({
   report,
   watchRef,
+  hideWhileVisibleRef,
 }: {
   report: SuspicionReport;
   /** Only shows while this element (the results) is in view. */
   watchRef: RefObject<HTMLElement | null>;
+  /** Stays hidden while this element (the verdict strip, which already says it all) is on screen. */
+  hideWhileVisibleRef?: RefObject<HTMLElement | null>;
 }) {
   const [inView, setInView] = useState(false);
+  const [stripVisible, setStripVisible] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [pinned, setPinned] = useState(false);
@@ -116,7 +120,15 @@ export function StatsMascot({
     return () => observer.disconnect();
   }, [watchRef]);
 
-  if (!inView) return null;
+  useEffect(() => {
+    const el = hideWhileVisibleRef?.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => setStripVisible(entry.isIntersecting));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hideWhileVisibleRef]);
+
+  if (!inView || stripVisible) return null;
 
   const copy = COPY[report.level];
   const flagged = report.level === "watch" || report.level === "alert";
