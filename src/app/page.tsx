@@ -6,7 +6,8 @@ import { HeroBackdrop } from "@/components/HeroBackdrop";
 import { PlayerSkeleton } from "@/components/PlayerSkeleton";
 import { PlayerResults } from "@/components/PlayerResults";
 import { ComparisonSkeleton, ComparisonView } from "@/components/ComparisonView";
-import type { PlayerData } from "@/lib/playerData";
+import { PART_NAMES, type PartName, type PlayerCore, type PlayerData, type PlayerParts } from "@/lib/playerData";
+import { fetchCore, fetchFullPlayer, fetchPart } from "@/lib/playerClient";
 
 type SearchStatus = "idle" | "loading" | "success" | "error";
 
@@ -17,6 +18,10 @@ export default function Home() {
   const [query, setQuery] = useState<string | null>(null);
   const [vsQuery, setVsQuery] = useState<string | null>(null);
   const [rival, setRival] = useState<PlayerData | null>(null);
+  const [core, setCore] = useState<PlayerCore | null>(null);
+  const [parts, setParts] = useState<Partial<PlayerParts>>({});
+  /** Bumped on every search so late responses from an older one are dropped. */
+  const searchId = useRef(0);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   // A shared link (?q=...) runs the search straight away.
@@ -58,18 +63,8 @@ export default function Home() {
     requestAnimationFrame(step);
   }
 
-  async function fetchPlayer(q: string): Promise<{ ok: true; data: PlayerData } | { ok: false; error: string }> {
-    try {
-      const res = await fetch(`/api/player?q=${encodeURIComponent(q)}`);
-      const json = await res.json();
-      if (!res.ok) return { ok: false, error: json?.error ?? "Algo salió mal. Probá de nuevo." };
-      return { ok: true, data: json as PlayerData };
-    } catch {
-      return { ok: false, error: "No pudimos conectar con el servidor. Probá de nuevo en un momento." };
-    }
-  }
-
   async function handleSearch(query: string, vs?: string) {
+    const id = ++searchId.current;
     setQuery(query);
     setVsQuery(vs ?? null);
     const url = new URL(window.location.href);
@@ -82,20 +77,50 @@ export default function Home() {
     // Scrolling down to the results is what blurs the backdrop.
     requestAnimationFrame(() => scrollToResults());
 
-    const [first, second] = await Promise.all([fetchPlayer(query), vs ? fetchPlayer(vs) : Promise.resolve(null)]);
-
-    if (!first.ok || (second && !second.ok)) {
-      const parts: string[] = [];
-      if (!first.ok) parts.push(vs ? `Primer perfil: ${first.error}` : first.error);
-      if (second && !second.ok) parts.push(`Segundo perfil: ${second.error}`);
-      setErrorMessage(parts.join(" "));
-      setStatus("error");
+    if (vs) {
+      // The comparison needs every metric of both players for its tally, so it waits for all of it.
+      const [first, second] = await Promise.all([fetchFullPlayer(query), fetchFullPlayer(vs)]);
+      if (id !== searchId.current) return;
+      if (!first.ok || !second.ok) {
+        const errors: string[] = [];
+        if (!first.ok) errors.push(`Primer perfil: ${first.error}`);
+        if (!second.ok) errors.push(`Segundo perfil: ${second.error}`);
+        setErrorMessage(errors.join(" "));
+        setStatus("error");
+        return;
+      }
+      setData(first.data);
+      setRival(second.data);
+      setStatus("success");
       return;
     }
 
-    setData(first.data);
-    setRival(second?.ok ? second.data : null);
+    // Single profile: show the Steam side as soon as it lands, then fill in each source on arrival.
+    const core = await fetchCore(query);
+    if (id !== searchId.current) return;
+    if (!core.ok) {
+      setErrorMessage(core.error);
+      setStatus("error");
+      return;
+    }
+    setCore(core.data);
+    setParts({});
     setStatus("success");
+    for (const name of PART_NAMES) {
+      fetchPart(name, core.data.steamid).then((part) => {
+        if (id === searchId.current) setParts((prev) => ({ ...prev, [name]: part }));
+      });
+    }
+  }
+
+  /** Re-fetches one slow source of the current single-profile search (e.g. Leetify timed out). */
+  function retryPart(name: PartName) {
+    if (!core) return;
+    const id = searchId.current;
+    setParts((prev) => ({ ...prev, [name]: undefined }));
+    fetchPart(name, core.steamid).then((part) => {
+      if (id === searchId.current) setParts((prev) => ({ ...prev, [name]: part }));
+    });
   }
 
   function openProfile(player: PlayerData) {
@@ -162,7 +187,7 @@ export default function Home() {
             {status === "success" && data && rival && vsQuery && (
               <ComparisonView a={data} b={rival} onOpenProfile={openProfile} />
             )}
-            {status === "success" && data && !vsQuery && <PlayerResults data={data} />}
+            {status === "success" && core && !vsQuery && <PlayerResults core={core} parts={parts} onRetryPart={retryPart} />}
             {status === "error" && errorMessage && (
               <div className="animate-fade-up flex flex-col items-center gap-5 py-16 text-center" role="alert">
                 <p className="font-display text-4xl font-extrabold text-sand uppercase">{vsQuery ? "No pudimos cargar la comparación" : "No pudimos cargar el perfil"}</p>

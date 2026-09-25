@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "rev": 32,
+  "savedAt": "2026-09-24T20:53:43.446Z",
+  "id": "project-v8t503",
+  "name": "luckyData",
+  "color": "#0a84ff",
+  "viewport": {
+    "x": 185.94697112340305,
+    "y": 61.43149590988718,
+    "zoom": 1
+  },
+  "nodes": [
+    {
+      "id": "term-mug09wpq-e4a0c048",
+      "kind": "terminal",
+      "position": {
+        "x": -105.94697112340305,
+        "y": 18.568504090112818
+      },
+      "size": {
+        "width": 910,
+        "height": 638
+      },
+      "title": "Descripción del proyecto",
+      "titleAuto": true,
+      "color": "#d97757",
+      "group": null,
+      "tags": [],
+      "cwd": ".",
+      "agentId": "claude"
+    }
+  ],
+  "bridges": [],
+  "ropes": []
+}

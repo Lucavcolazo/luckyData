@@ -61,12 +61,23 @@ async function steamFetch(path: string, params: Record<string, string>) {
   return res.json();
 }
 
+/** Custom URLs almost never change owner, so a resolved one is kept for a day. */
+const VANITY_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const vanityCache = new Map<string, { steamid: string; expiresAt: number }>();
+
 export async function resolveVanityUrl(vanity: string): Promise<string | null> {
+  const key = vanity.toLowerCase();
+  const cached = vanityCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.steamid;
+
   const data = await steamFetch("/ISteamUser/ResolveVanityURL/v1/", {
     vanityurl: vanity,
   });
   const result = data?.response;
-  if (result?.success === 1 && result.steamid) return result.steamid as string;
+  if (result?.success === 1 && result.steamid) {
+    vanityCache.set(key, { steamid: result.steamid as string, expiresAt: Date.now() + VANITY_CACHE_TTL_MS });
+    return result.steamid as string;
+  }
   return null;
 }
 

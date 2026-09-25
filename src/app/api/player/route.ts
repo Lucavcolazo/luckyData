@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseSteamInput } from "@/lib/parseSteamInput";
 import { getPlayerBans, getPlayerSummary, getSteamLevel, resolveVanityUrl } from "@/lib/steam";
-import { getFaceitPlayerBySteamId } from "@/lib/faceit";
-import { getInventoryValue } from "@/lib/inventory";
-import { getLeetifyMatches, getLeetifyProfile } from "@/lib/leetify";
 import { computeTrustScore } from "@/lib/trustScore";
-import type { PlayerData } from "@/lib/playerData";
+import type { PlayerCore } from "@/lib/playerData";
+import { jsonWithTimings, timed } from "@/lib/serverTiming";
 
+/**
+ * The Steam side of a player (profile, bans, level, trust). Leetify, FACEIT and the inventory have
+ * their own routes under /api/player/* so the page can show each one as soon as it lands.
+ */
 export async function GET(request: NextRequest) {
+  const timings: string[] = [];
   const raw = request.nextUrl.searchParams.get("q");
   if (!raw) {
     return NextResponse.json({ error: "Falta el perfil a buscar." }, { status: 400 });
@@ -28,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   try {
     if (parsed.type === "vanity") {
-      steamid = await resolveVanityUrl(parsed.value);
+      steamid = await timed(timings, "vanity", resolveVanityUrl(parsed.value));
     }
   } catch {
     return NextResponse.json(
@@ -44,16 +47,12 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  let summary, bans, level, faceit, inventory, leetify, leetifyMatches;
+  let summary, bans, level;
   try {
-    [summary, bans, level, faceit, inventory, leetify, leetifyMatches] = await Promise.all([
-      getPlayerSummary(steamid),
-      getPlayerBans(steamid),
-      getSteamLevel(steamid),
-      getFaceitPlayerBySteamId(steamid),
-      getInventoryValue(steamid),
-      getLeetifyProfile(steamid),
-      getLeetifyMatches(steamid),
+    [summary, bans, level] = await Promise.all([
+      timed(timings, "summary", getPlayerSummary(steamid)),
+      timed(timings, "bans", getPlayerBans(steamid)),
+      timed(timings, "level", getSteamLevel(steamid)),
     ]);
   } catch {
     return NextResponse.json(
@@ -73,19 +72,15 @@ export async function GET(request: NextRequest) {
   const trust = computeTrustScore(bans, level, summary.timecreated);
   const steamDbUrl = `https://steamdb.info/calculator/${steamid}/`;
 
-  const data: PlayerData = {
+  const data: PlayerCore = {
     steamid,
     summary,
     bans,
     level,
-    faceit,
-    inventory,
-    leetify,
-    leetifyMatches,
     isPublic,
     steamDbUrl,
     trust,
   };
 
-  return NextResponse.json(data);
+  return jsonWithTimings(data, timings);
 }

@@ -63,7 +63,8 @@ export function AccountOverviewCard({
   isPublic: boolean;
   steamid: string;
   steamDbUrl: string;
-  inventory: InventoryValueResult;
+  /** null while the inventory request is still running. */
+  inventory: InventoryValueResult | null;
   trust: TrustScoreResult;
 }) {
   const country = summary.loccountrycode;
@@ -147,7 +148,9 @@ export function AccountOverviewCard({
           <TrustScoreCard result={trust} />
           <div className="flex flex-col gap-2">
             <Label>Inventario CS2</Label>
-            {inventory.status === "ok" ? (
+            {inventory === null ? (
+              <span className="skeleton mt-1 h-10 w-36" role="status" aria-label="Calculando inventario…" />
+            ) : inventory.status === "ok" ? (
               <span className="font-label text-5xl leading-[0.85] font-bold tabular-nums">
                 {usdFmt.format(inventory.totalValueUsd)}
               </span>

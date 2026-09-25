@@ -73,3 +73,22 @@ export function PlayerSkeleton() {
     </div>
   );
 }
+
+/** Placeholder for one stats tab while its source is still loading. */
+export function StatsPanelSkeleton({ label }: { label: string }) {
+  return (
+    <div role="status" aria-live="polite" aria-busy="true">
+      <span className="sr-only">{label}</span>
+      <SectionBone />
+      <div className="grid grid-cols-2 border-t border-l border-line lg:grid-cols-4">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <TileBone key={i} />
+        ))}
+      </div>
+      <section className="mt-16">
+        <SectionBone />
+        <Bone className="h-56 w-full" />
+      </section>
+    </div>
+  );
+}

@@ -111,6 +111,115 @@ body {
   animation: radar-blip 4s ease-in-out infinite;
 }
 
+/* Stats mascot (StatsMascot.tsx). Parts scale around their own box so the SVG stays put. */
+.blob-bob {
+  animation: blob-bob 3s ease-in-out infinite;
+}
+.blob-breathe {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: blob-breathe 4s ease-in-out infinite;
+}
+.blob-blink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: blob-blink 4.5s infinite;
+}
+.blob-shifty {
+  animation: blob-shifty 3.2s ease-in-out infinite;
+}
+.blob-morph-body,
+.blob-morph-bang {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: 3.6s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+.blob-morph-body {
+  animation-name: blob-morph-body;
+}
+.blob-morph-bang {
+  animation-name: blob-morph-bang;
+}
+
+@keyframes blob-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes blob-breathe {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.03, 0.97);
+  }
+}
+@keyframes blob-blink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+/* Side glance: look left, hold, look right, hold, back. */
+@keyframes blob-shifty {
+  0%,
+  8%,
+  92%,
+  100% {
+    transform: translateX(0);
+  }
+  18%,
+  38% {
+    transform: translateX(-5px);
+  }
+  52%,
+  78% {
+    transform: translateX(5px);
+  }
+}
+/* The body squashes away while the "!" springs up, then they swap back. */
+@keyframes blob-morph-body {
+  0%,
+  40%,
+  90%,
+  100% {
+    transform: scale(1, 1);
+    opacity: 1;
+  }
+  46% {
+    transform: scale(1.12, 0.7);
+    opacity: 1;
+  }
+  52%,
+  82% {
+    transform: scale(0.2, 0.2);
+    opacity: 0;
+  }
+}
+@keyframes blob-morph-bang {
+  0%,
+  46%,
+  88%,
+  100% {
+    transform: scale(0.2, 0.2);
+    opacity: 0;
+  }
+  54%,
+  80% {
+    transform: scale(1, 1);
+    opacity: 1;
+  }
+}
+
 @keyframes shimmer {
   from {
     background-position: 150% 0;
@@ -135,9 +244,20 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
   .animate-focus-in,
+  .blob-bob,
+  .blob-breathe,
+  .blob-blink,
+  .blob-shifty,
+  .blob-morph-body,
+  .blob-morph-bang,
   .animate-radar-sweep,
   .animate-radar-blip,
   .skeleton {
     animation: none;
+  }
+
+  /* Without motion the "!" would sit on top of the body: keep the blob, it still has its expression. */
+  .blob-morph-bang {
+    display: none;
   }
 }

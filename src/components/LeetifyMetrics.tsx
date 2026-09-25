@@ -1,4 +1,4 @@
-import type { LeetifyMatch, LeetifyProfile } from "@/lib/leetify";
+import type { LeetifyMatch, LeetifyProfile, LeetifyStatus } from "@/lib/leetify";
 import { gaugeRatio, type Direction } from "@/lib/gauge";
 import { compareToFaceitLevel10, FACEIT_LEVEL_10_BENCHMARK } from "@/lib/proBenchmarks";
 import { Label, Meter, SandLink, SectionHeading, STAT_CELL, StatGrid } from "@/components/Dossier";
@@ -190,6 +190,44 @@ export function LeetifyMetrics({
             gauge={gauge(profile.stats.traded_deaths_success_percentage, 0, 100)}
           />
         </StatGrid>
+      )}
+    </section>
+  );
+}
+
+const EMPTY_COPY: Record<Exclude<LeetifyStatus, "ok">, { title: string; body: string }> = {
+  not_found: {
+    title: "Sin cuenta en Leetify",
+    body: "Este Steam no está registrado en Leetify, así que no hay estadísticas de CS2 para mostrar. El jugador tiene que entrar a leetify.com con su Steam.",
+  },
+  private: {
+    title: "Perfil privado en Leetify",
+    body: "El jugador tiene su perfil de Leetify en privado. Mientras siga así, Leetify no comparte sus estadísticas.",
+  },
+  unavailable: {
+    title: "Leetify no respondió",
+    body: "No pudimos traer los datos de Leetify en este momento (puede estar lento o limitando consultas).",
+  },
+};
+
+/** Replaces the whole CS2 tab when Leetify has nothing to give, saying why. */
+export function LeetifyEmpty({ status, onRetry }: { status: Exclude<LeetifyStatus, "ok">; onRetry?: () => void }) {
+  const copy = EMPTY_COPY[status];
+  return (
+    <section className="flex flex-col items-center gap-4 border border-line px-6 py-14 text-center">
+      <p className="font-display text-3xl leading-none font-extrabold text-sand uppercase">{copy.title}</p>
+      <p className="max-w-md text-sm text-ink-muted">{copy.body}</p>
+      {status === "unavailable" && onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="h-10 bg-paint px-5 font-label text-sm font-bold tracking-[0.14em] text-white uppercase transition-[filter,transform] duration-150 hover:brightness-110 active:scale-[0.97]"
+        >
+          Reintentar
+        </button>
+      )}
+      {status === "not_found" && (
+        <SandLink href="https://leetify.com/">Ir a Leetify</SandLink>
       )}
     </section>
   );

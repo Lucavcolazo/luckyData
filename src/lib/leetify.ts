@@ -89,20 +89,36 @@ function authHeaders(): Record<string, string> {
   return { _leetify_key: key };
 }
 
+/** Leetify can take several seconds; past this we give up instead of holding the page. */
+const TIMEOUT_MS = 10_000;
+
+/**
+ * Why a profile came back empty, so the UI can say something true: not on Leetify, private on
+ * Leetify, or Leetify itself failing (rate limit, 5xx, timeout, missing key).
+ */
+export type LeetifyStatus = "ok" | "not_found" | "private" | "unavailable";
+
 /** Regla de Leetify: nunca cachear/guardar sus datos, siempre pedir en vivo. */
-export async function getLeetifyProfile(steamid64: string): Promise<LeetifyProfile | null> {
+export async function getLeetifyProfile(
+  steamid64: string,
+): Promise<{ profile: LeetifyProfile | null; status: LeetifyStatus }> {
   try {
     const url = new URL(`${BASE}/v3/profile`);
     url.searchParams.set("steam64_id", steamid64);
 
-    const res = await fetch(url, { headers: authHeaders(), cache: "no-store" });
-    if (!res.ok) return null;
+    const res = await fetch(url, { headers: authHeaders(), cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
+    if (res.status === 404) return { profile: null, status: "not_found" };
+    if (!res.ok) {
+      console.error(`[leetify] /v3/profile respondió ${res.status} para ${steamid64}`);
+      return { profile: null, status: "unavailable" };
+    }
 
     const data: LeetifyProfile = await res.json();
-    if (data.privacy_mode !== "public") return null;
-    return data;
-  } catch {
-    return null;
+    if (data.privacy_mode !== "public") return { profile: null, status: "private" };
+    return { profile: data, status: "ok" };
+  } catch (error) {
+    console.error(`[leetify] /v3/profile falló para ${steamid64}:`, error);
+    return { profile: null, status: "unavailable" };
   }
 }
 
@@ -112,12 +128,16 @@ export async function getLeetifyMatches(steamid64: string): Promise<LeetifyMatch
     const url = new URL(`${BASE}/v3/profile/matches`);
     url.searchParams.set("steam64_id", steamid64);
 
-    const res = await fetch(url, { headers: authHeaders(), cache: "no-store" });
-    if (!res.ok) return [];
+    const res = await fetch(url, { headers: authHeaders(), cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
+    if (!res.ok) {
+      if (res.status !== 404) console.error(`[leetify] /v3/profile/matches respondió ${res.status} para ${steamid64}`);
+      return [];
+    }
 
     const data: LeetifyMatch[] = await res.json();
     return Array.isArray(data) ? data : [];
-  } catch {
+  } catch (error) {
+    console.error(`[leetify] /v3/profile/matches falló para ${steamid64}:`, error);
     return [];
   }
 }
